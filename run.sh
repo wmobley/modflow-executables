@@ -12,16 +12,23 @@ RUN_ROOT="$PWD/run"
 rm -rf "$RUN_ROOT"
 mkdir -p "$RUN_ROOT" "$OUTPUTS_DIR"
 
-shopt -s nullglob
-zip_inputs=("$INPUTS_DIR"/*.zip)
-shopt -u nullglob
+SIM_ARCHIVE="$INPUTS_DIR/simulation.zip"
 
-if [[ ${#zip_inputs[@]} -gt 0 ]]; then
-  log "Unpacking ${zip_inputs[0]} into $RUN_ROOT"
-  unzip -q "${zip_inputs[0]}" -d "$RUN_ROOT"
+if [[ -f "$SIM_ARCHIVE" ]]; then
+  log "Unpacking simulation.zip into $RUN_ROOT"
+  unzip -q "$SIM_ARCHIVE" -d "$RUN_ROOT"
 else
-  log "Copying inputs from $INPUTS_DIR into $RUN_ROOT"
-  cp -a "${INPUTS_DIR}/." "$RUN_ROOT/" 2>/dev/null || true
+  shopt -s nullglob
+  other_archives=("$INPUTS_DIR"/*.zip)
+  shopt -u nullglob
+
+  if [[ ${#other_archives[@]} -gt 0 ]]; then
+    log "simulation.zip not found; unpacking ${other_archives[0]} into $RUN_ROOT"
+    unzip -q "${other_archives[0]}" -d "$RUN_ROOT"
+  else
+    log "Copying inputs from $INPUTS_DIR into $RUN_ROOT"
+    cp -a "${INPUTS_DIR}/." "$RUN_ROOT/" 2>/dev/null || true
+  fi
 fi
 
 SIM_DIR="$RUN_ROOT"
