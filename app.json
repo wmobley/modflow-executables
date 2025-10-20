@@ -1,17 +1,17 @@
 {
-  "id": "no-interactive-example",
-  "version": "0.1.0",
-  "description": "Run an non-interactive script on TACC using docker.",
+  "id": "modflow6-simulation",
+  "version": "0.0.1",
+  "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
   "runtime": "SINGULARITY",
   "runtimeVersion": null,
   "runtimeOptions": ["SINGULARITY_RUN"],
-  "containerImage": "docker://ghcr.io/in-for-disaster-analytics/cookbook-docker-template:0.1.0",
+  "containerImage": "docker://ghcr.io/in-for-disaster-analytics/cookbook-modflow6:latest",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
-  "strictFileInputs": true,
+  "strictFileInputs": false,
   "jobAttributes": {
     "description": null,
     "dynamicExecSystem": false,
@@ -28,31 +28,7 @@
     "mpiCmd": null,
     "cmdPrefix": "mkdir $PWD/work $PWD/home $PWD/scratch;",
     "parameterSet": {
-      "appArgs": [
-        {
-          "name": "Greeting",
-          "description": "Choose a greeting to give to your target",
-          "inputMode": "REQUIRED",
-          "arg": "hello"
-        },
-        {
-          "name": "Target",
-          "description": "Whom to address your greeting",
-          "inputMode": "REQUIRED",
-          "arg": "world"
-        }
-      ],
-      "containerArgs": [
-        {
-          "name": "Jupyter Mounts",
-          "description": "Mount for TAP functions and user dirs",
-          "inputMode": "FIXED",
-          "arg": "--bind /share,$WORK:$PWD/work,$HOME:$PWD/home,$SCRATCH:$PWD/scratch",
-          "notes": {
-            "isHidden": true
-          }
-        }
-      ],
+      "appArgs": [],
       "schedulerOptions": [
         {
           "name": "TACC Scheduler Profile",
@@ -80,7 +56,16 @@
         "includeLaunchFiles": true
       }
     },
-    "fileInputs": [],
+    "fileInputs": [
+      {
+        "name": "simulation-zip",
+        "description": "Optional ZIP archive containing an entire MODFLOW 6 simulation (must include mfsim.nam at the top level).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "simulation.zip"
+      }
+    ],
     "fileInputArrays": [],
     "nodeCount": 1,
     "coresPerNode": 1,
@@ -91,9 +76,9 @@
   },
   "tags": ["portalName: ALL"],
   "notes": {
-    "label": "My first cookbook",
-    "helpUrl": "https://github.com/In-For-Disaster-Analytics/Cookbook-Docker-Template",
-    "helpText": "This app is non-interactive and runs a simple script that greets a target with a greeting of your choice",
+    "label": "MODFLOW 6",
+    "helpUrl": "https://www.simonwenkel.com/notes/geo/software/modflow/compiling-modflow-on-linux.html",
+    "helpText": "Provide either a MODFLOW 6 simulation directory or a ZIP archive that contains mfsim.nam and all required package files.",
     "hideNodeCountAndCoresPerNode": true,
     "isInteractive": false,
     "icon": "jupyter",
