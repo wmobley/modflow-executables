@@ -33,9 +33,10 @@ fi
 
 SIM_DIR="$RUN_ROOT"
 if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
-  candidate=$(find "$RUN_ROOT" -mindepth 1 -maxdepth 1 -type d -print -quit)
-  if [[ -n "$candidate" && -f "$candidate/mfsim.nam" ]]; then
-    SIM_DIR="$candidate"
+  # Allow nested directory structures and skip noise like __MACOSX.
+  mapfile -t sim_matches < <(find "$RUN_ROOT" -type f -name 'mfsim.nam' -print 2>/dev/null)
+  if [[ ${#sim_matches[@]} -gt 0 ]]; then
+    SIM_DIR="$(dirname "${sim_matches[0]}")"
   fi
 fi
 
