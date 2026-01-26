@@ -12,11 +12,11 @@ def resolve_nam_path(args: list[str]) -> Path:
     if args:
         candidate = args[0]
     else:
-        candidate = os.environ.get("MF6_NAMFILE") or os.environ.get("MFSIM_NAM") or "mfsim.nam"
+        candidate = os.environ.get("MF6_NAMFILE") or os.environ.get("MFSIM_NAM") or "gma14.nam"
 
     path = Path(candidate)
     if path.is_dir():
-        path = path / "mfsim.nam"
+        path = path / "gma14.nam"
     if not path.is_absolute():
         path = (Path.cwd() / path).resolve()
 
@@ -26,7 +26,7 @@ def resolve_nam_path(args: list[str]) -> Path:
 def main() -> int:
     nam_path = resolve_nam_path(sys.argv[1:])
     if not nam_path.exists():
-        print(f"mfsim.nam not found at {nam_path}", file=sys.stderr)
+        print(f"Name file not found at {nam_path}", file=sys.stderr)
         return 1
 
     sim_dir = nam_path.parent

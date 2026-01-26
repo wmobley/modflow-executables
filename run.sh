@@ -140,7 +140,7 @@ if [[ ! -f "$SIM_ARCHIVE" && ${#other_archives[@]} -eq 0 && "$INPUTS_DIR" == "$P
 fi
 
 create_mfsim_nam() {
-  local nam_path="$RUN_ROOT/mfsim.nam"
+  local nam_path="$RUN_ROOT/gma14.nam"
   if [[ -f "$nam_path" ]]; then
     return 0
   fi
@@ -221,17 +221,17 @@ else
 fi
 
 SIM_DIR="$RUN_ROOT"
-if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
+if [[ ! -f "$SIM_DIR/gma14.nam" ]]; then
   # Allow nested directory structures and skip noise like __MACOSX.
-  mapfile -t sim_matches < <(find "$RUN_ROOT" -type f -name 'mfsim.nam' -print 2>/dev/null)
+  mapfile -t sim_matches < <(find "$RUN_ROOT" -type f -name 'gma14.nam' -print 2>/dev/null)
   if [[ ${#sim_matches[@]} -gt 0 ]]; then
     SIM_DIR="$(dirname "${sim_matches[0]}")"
   fi
 fi
 
-if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
+if [[ ! -f "$SIM_DIR/gma14.nam" ]]; then
   if ! create_mfsim_nam; then
-    echo "Unable to locate or create mfsim.nam in the provided inputs." >&2
+    echo "Unable to locate or create gma14.nam in the provided inputs." >&2
     exit 1
   fi
   SIM_DIR="$RUN_ROOT"
@@ -253,7 +253,7 @@ stage_required_files \
   "gma14.sto" \
   "gma14.obs"
 
-python modflow.py "$SIM_DIR/mfsim.nam"
+python modflow.py "$SIM_DIR/gma14.nam"
 
 log "Copying simulation results to $OUTPUTS_DIR"
 cp -a "$SIM_DIR/." "$OUTPUTS_DIR/"
