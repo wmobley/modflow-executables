@@ -127,6 +127,7 @@ log() {
 INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
 RUN_ROOT="$PWD/run"
+DEFAULT_DATA_DIR=""
 
 SIM_ARCHIVE="$INPUTS_DIR/simulation.zip"
 shopt -s nullglob
@@ -194,6 +195,12 @@ stage_required_files() {
       cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
     elif [[ -f "$INPUTS_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
       cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
+    elif [[ -n "$DEFAULT_DATA_DIR" ]]; then
+      if [[ -d "$DEFAULT_DATA_DIR/$f" && ! -d "$RUN_ROOT/$f" ]]; then
+        cp -a "$DEFAULT_DATA_DIR/$f" "$RUN_ROOT/"
+      elif [[ -f "$DEFAULT_DATA_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
+        cp -a "$DEFAULT_DATA_DIR/$f" "$RUN_ROOT/"
+      fi
     fi
   done
 }
@@ -247,6 +254,12 @@ else
   fi
 fi
 
+if [[ -d "$RUN_ROOT/default_data" ]]; then
+  DEFAULT_DATA_DIR="$RUN_ROOT/default_data"
+elif [[ -d "$INPUTS_DIR/default_data" ]]; then
+  DEFAULT_DATA_DIR="$INPUTS_DIR/default_data"
+fi
+
 SIM_DIR="$RUN_ROOT"
 if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
   # Allow nested directory structures and skip noise like __MACOSX.
@@ -281,7 +294,8 @@ stage_required_files \
   "gma14_rch_sc.rcha" \
   "gma14.csub" \
   "gma14.sto" \
-  "gma14.obs"
+  "gma14.obs" \
+  "gma14.csub.obs"
 
 create_gma14_nam
 
