@@ -190,7 +190,9 @@ EOF
 stage_required_files() {
   local f
   for f in "$@"; do
-    if [[ -f "$INPUTS_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
+    if [[ -d "$INPUTS_DIR/$f" && ! -d "$RUN_ROOT/$f" ]]; then
+      cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
+    elif [[ -f "$INPUTS_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
       cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
     fi
   done
@@ -263,6 +265,7 @@ if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
 fi
 
 stage_required_files \
+  "array_data" \
   "gma14.dis" \
   "gma14.ic" \
   "gma14.oc" \
