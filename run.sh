@@ -52,6 +52,18 @@ function install_conda() {
 	unset PYTHONPATH
 }
 
+function ensure_git() {
+	if ! command -v git >/dev/null 2>&1; then
+		if command -v module >/dev/null 2>&1; then
+			module load git || true
+		fi
+	fi
+	if ! command -v git >/dev/null 2>&1; then
+		echo "ERROR: git not found in PATH. Please install git or load it via modules before running." >&2
+		exit 1
+	fi
+}
+
 function clone_cookbook_on_workspace() {
 	DATE_FILE_SUFFIX=$(date +%Y%m%d%H%M%S)
 	if [ ! -d "$COOKBOOK_WORKSPACE_DIR" ]; then
@@ -102,6 +114,7 @@ function handle_installation() {
 #Execution
 install_conda
 export_repo_variables
+ensure_git
 init_directory
 handle_installation
 
