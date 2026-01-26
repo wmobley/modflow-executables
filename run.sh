@@ -42,7 +42,9 @@ function install_conda() {
 	fi
 	conda init bash
 	echo "Sourcing .bashrc..."
+	set +u
 	source ~/.bashrc
+	set -u
 	unset PYTHONPATH
 }
 
