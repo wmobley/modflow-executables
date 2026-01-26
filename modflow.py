@@ -12,11 +12,11 @@ def resolve_nam_path(args: list[str]) -> Path:
     if args:
         candidate = args[0]
     else:
-        candidate = os.environ.get("MF6_NAMFILE") or os.environ.get("MFSIM_NAM") or "gma14.nam"
+        candidate = os.environ.get("MF6_NAMFILE") or os.environ.get("MFSIM_NAM") or "mfsim.nam"
 
     path = Path(candidate)
     if path.is_dir():
-        path = path / "gma14.nam"
+        path = path / "mfsim.nam"
     if not path.is_absolute():
         path = (Path.cwd() / path).resolve()
 
