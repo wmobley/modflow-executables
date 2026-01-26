@@ -81,7 +81,7 @@ function handle_installation() {
 install_conda
 export_repo_variables
 handle_installation
-session_cleanup
+
 
 
 log() {
