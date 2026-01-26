@@ -223,7 +223,7 @@ if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
   SIM_DIR="$RUN_ROOT"
 fi
 
-python modflow.py
+python modflow.py "$SIM_DIR/mfsim.nam"
 
 log "Copying simulation results to $OUTPUTS_DIR"
 cp -a "$SIM_DIR/." "$OUTPUTS_DIR/"
