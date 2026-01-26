@@ -1,0 +1,35 @@
+name: flopy
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy=1.26.4
+  - jupyterlab
+  - plotly
+  - anywidget
+  - ipywidgets
+  - jupyterlab_widgets
+  - ipyleaflet
+  - geopandas
+  - fiona
+  - ipykernel
+  - pandas
+  - matplotlib
+  - geopandas
+  - flopy
+  - gitpython
+  - pooch
+  - pyproj
+  - netCDF4
+  - pyshp
+  - shapely
+  - rasterio
+  - python-dateutil
+  - scipy
+  - descartes
+  - rasterstats
+  - affine
+  - defusedxml
+  - geojson
+  - vtk
+  - pyvista

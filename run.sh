@@ -1,6 +1,93 @@
 #!/bin/bash
 set -euo pipefail
 
+
+export COOKBOOK_NAME="FloPy"
+export COOKBOOK_CONDA_ENV="flopy"
+IS_GPU_JOB=false
+
+function export_repo_variables() {
+	COOKBOOK_DIR=${WORK}/cookbooks
+
+	COOKBOOK_REPOSITORY_PARENT_DIR=${COOKBOOK_DIR}/.repository
+	COOKBOOK_REPOSITORY_DIR=${COOKBOOK_REPOSITORY_PARENT_DIR}/${COOKBOOK_NAME}
+	UPDATE_AVAILABLE_FILE=./UPDATE_AVAILABLE.txt
+	NODE_HOSTNAME_PREFIX=$(hostname -s) # Short Host Name  -->  name of compute node: c###-###
+	NODE_HOSTNAME_DOMAIN=$(hostname -d) # DNS Name  -->  stampede2.tacc.utexas.edu
+	NODE_HOSTNAME_LONG=$(hostname -f)   # Fully Qualified Domain Name  -->  c###-###.stampede2.tacc.utexas.edu
+	export COOKBOOK_DIR
+	export COOKBOOK_WORKSPACE_DIR
+	export COOKBOOK_REPOSITORY_DIR
+	export COOKBOOK_REPOSITORY_PARENT_DIR
+	export UPDATE_AVAILABLE_FILE
+	export NODE_HOSTNAME_PREFIX
+	export NODE_HOSTNAME_DOMAIN
+	export NODE_HOSTNAME_LONG
+}
+
+function install_conda() {
+	echo "Checking if miniconda3 is installed..."
+	if [ ! -d "$WORK/miniconda3" ]; then
+		echo "Miniconda not found in $WORK..."
+		echo "Installing..."
+		mkdir -p "$WORK/miniconda3"
+		curl https://repo.anaconda.com/miniconda/Miniconda3-py311_23.10.0-1-Linux-x86_64.sh -o "$WORK/miniconda3/miniconda.sh"
+		bash "$WORK/miniconda3/miniconda.sh" -b -u -p "$WORK/miniconda3"
+		rm -rf "$WORK/miniconda3/miniconda.sh"
+		export PATH="$WORK/miniconda3/bin:$PATH"
+		echo "Ensuring conda base environment is OFF..."
+		conda config --set auto_activate_base false
+	else
+		export PATH="$WORK/miniconda3/bin:$PATH"
+	fi
+	conda init bash
+	echo "Sourcing .bashrc..."
+	source ~/.bashrc
+	unset PYTHONPATH
+}
+
+
+function conda_environment_exists() {
+	conda env list | grep "${COOKBOOK_CONDA_ENV}"
+}
+
+function create_conda_environment() {
+	if [ -f ./.binder/environment.yml ]; then
+		conda env create -n ${COOKBOOK_CONDA_ENV} -f ./.binder/environment.yml --yes
+		conda activate ${COOKBOOK_CONDA_ENV}
+	elif  [ -f ./.binder/environment.yaml ]; then
+		conda env create -n ${COOKBOOK_CONDA_ENV} -f ./.binder/environment.yaml --yes
+		conda activate ${COOKBOOK_CONDA_ENV}
+	fi
+	if [ -f ./.binder/requirements.txt ]; then
+		pip install --no-cache-dir -r ./.binder/requirements.txt
+	fi
+	python -m ipykernel install --user --name "${COOKBOOK_CONDA_ENV}" --display-name "Python (${COOKBOOK_CONDA_ENV})"
+}
+
+
+function handle_installation() {
+	if [ ${UPDATE_CONDA_ENV} = "true" ]; then
+		if { conda_environment_exists; } >/dev/null 2>&1; then
+			delete_conda_environment
+		fi
+		create_conda_environment
+	else
+		if { conda_environment_exists; } >/dev/null 2>&1; then
+			echo "Conda environment already exists"
+		else
+			create_conda_environment
+		fi
+	fi
+}
+
+#Execution
+install_conda
+export_repo_variables
+handle_installation
+session_cleanup
+
+
 log() {
   printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
 }
@@ -45,14 +132,7 @@ if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
   exit 1
 fi
 
-log "Running MODFLOW 6 in $SIM_DIR"
-pushd "$SIM_DIR" >/dev/null
-if command -v tee >/dev/null 2>&1; then
-  mf6 2>&1 | tee "$OUTPUTS_DIR/mf6.stdout"
-else
-  mf6 >"$OUTPUTS_DIR/mf6.stdout" 2>&1
-fi
-popd >/dev/null
+python modflow.py
 
 log "Copying simulation results to $OUTPUTS_DIR"
 cp -a "$SIM_DIR/." "$OUTPUTS_DIR/"
