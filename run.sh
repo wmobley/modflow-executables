@@ -126,7 +126,7 @@ log() {
 
 INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
-RUN_ROOT="$PWD/run"
+RUN_ROOT="$PWD/"
 
 create_mfsim_nam() {
   local nam_path="$RUN_ROOT/mfsim.nam"
