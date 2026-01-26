@@ -126,7 +126,18 @@ log() {
 
 INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
-RUN_ROOT="$PWD/"
+RUN_ROOT="$PWD/run"
+
+SIM_ARCHIVE="$INPUTS_DIR/simulation.zip"
+shopt -s nullglob
+other_archives=("$INPUTS_DIR"/*.zip)
+shopt -u nullglob
+
+USE_INPUT_ROOT=false
+if [[ ! -f "$SIM_ARCHIVE" && ${#other_archives[@]} -eq 0 && "$INPUTS_DIR" == "$PWD" ]]; then
+  USE_INPUT_ROOT=true
+  RUN_ROOT="$PWD"
+fi
 
 create_mfsim_nam() {
   local nam_path="$RUN_ROOT/mfsim.nam"
@@ -151,11 +162,7 @@ create_mfsim_nam() {
     "gma14.obs"
   )
 
-  for f in "${required_files[@]}"; do
-    if [[ -f "$INPUTS_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
-      cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
-    fi
-  done
+  stage_required_files "${required_files[@]}"
 
   cat <<'EOF' >"$nam_path"
 BEGIN options
@@ -181,25 +188,35 @@ END packages
 EOF
 }
 
-rm -rf "$RUN_ROOT"
-mkdir -p "$RUN_ROOT" "$OUTPUTS_DIR"
+stage_required_files() {
+  local f
+  for f in "$@"; do
+    if [[ -f "$INPUTS_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
+      cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
+    fi
+  done
+}
 
-SIM_ARCHIVE="$INPUTS_DIR/simulation.zip"
+if [[ "$USE_INPUT_ROOT" == "false" ]]; then
+  rm -rf "$RUN_ROOT"
+  mkdir -p "$RUN_ROOT"
+fi
+mkdir -p "$OUTPUTS_DIR"
 
 if [[ -f "$SIM_ARCHIVE" ]]; then
   log "Unpacking simulation.zip into $RUN_ROOT"
   unzip -q "$SIM_ARCHIVE" -d "$RUN_ROOT"
 else
-  shopt -s nullglob
-  other_archives=("$INPUTS_DIR"/*.zip)
-  shopt -u nullglob
-
   if [[ ${#other_archives[@]} -gt 0 ]]; then
     log "simulation.zip not found; unpacking ${other_archives[0]} into $RUN_ROOT"
     unzip -q "${other_archives[0]}" -d "$RUN_ROOT"
   else
-    log "Copying inputs from $INPUTS_DIR into $RUN_ROOT"
-    cp -a "${INPUTS_DIR}/." "$RUN_ROOT/" 2>/dev/null || true
+    if [[ "$USE_INPUT_ROOT" == "false" ]]; then
+      log "Copying inputs from $INPUTS_DIR into $RUN_ROOT"
+      cp -a "${INPUTS_DIR}/." "$RUN_ROOT/" 2>/dev/null || true
+    else
+      log "Using inputs directly from $INPUTS_DIR"
+    fi
   fi
 fi
 
@@ -219,6 +236,22 @@ if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
   fi
   SIM_DIR="$RUN_ROOT"
 fi
+
+stage_required_files \
+  "gma14.dis" \
+  "gma14.ic" \
+  "gma14.oc" \
+  "gma14.npf" \
+  "gma14.drn" \
+  "gma14.riv" \
+  "gma14.ghb" \
+  "gma14.wel" \
+  "gma14.irr" \
+  "gma14_rch_oc.rcha" \
+  "gma14_rch_sc.rcha" \
+  "gma14.csub" \
+  "gma14.sto" \
+  "gma14.obs"
 
 python modflow.py "$SIM_DIR/mfsim.nam"
 
