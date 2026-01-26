@@ -67,18 +67,12 @@ function create_conda_environment() {
 
 
 function handle_installation() {
-	if [ ${UPDATE_CONDA_ENV} = "true" ]; then
-		if { conda_environment_exists; } >/dev/null 2>&1; then
-			delete_conda_environment
-		fi
-		create_conda_environment
-	else
 		if { conda_environment_exists; } >/dev/null 2>&1; then
 			echo "Conda environment already exists"
 		else
 			create_conda_environment
 		fi
-	fi
+	
 }
 
 #Execution
