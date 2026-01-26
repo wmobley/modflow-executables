@@ -169,10 +169,6 @@ create_mfsim_nam() {
 
   {
     cat <<'EOF'
-BEGIN options
-  NEWTON  UNDER_RELAXATION
-END options
-
 BEGIN packages
 EOF
     if [[ ${#packages[@]} -gt 0 ]]; then
