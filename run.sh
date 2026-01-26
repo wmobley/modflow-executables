@@ -134,50 +134,51 @@ create_mfsim_nam() {
     return 0
   fi
 
-  local packages=()
-  local file
+  local required_files=(
+    "gma14.dis"
+    "gma14.ic"
+    "gma14.oc"
+    "gma14.npf"
+    "gma14.drn"
+    "gma14.riv"
+    "gma14.ghb"
+    "gma14.wel"
+    "gma14.irr"
+    "gma14_rch_oc.rcha"
+    "gma14_rch_sc.rcha"
+    "gma14.csub"
+    "gma14.sto"
+    "gma14.obs"
+  )
 
-  add_package_if_present() {
-    local line="$1"
-    local filename="$2"
-    if [[ -f "$RUN_ROOT/$filename" ]]; then
-      packages+=("$line")
-      return 0
+  for f in "${required_files[@]}"; do
+    if [[ -f "$INPUTS_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
+      cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
     fi
-    if [[ -f "$INPUTS_DIR/$filename" ]]; then
-      cp -a "$INPUTS_DIR/$filename" "$RUN_ROOT/"
-      packages+=("$line")
-      return 0
-    fi
-    return 1
-  }
+  done
 
-  add_package_if_present "  DIS6  gma14.dis  dis" "gma14.dis"
-  add_package_if_present "  IC6  gma14.ic  ic" "gma14.ic"
-  add_package_if_present "  OC6  gma14.oc  oc" "gma14.oc"
-  add_package_if_present "  NPF6  gma14.npf  npf" "gma14.npf"
-  add_package_if_present "  DRN6  gma14.drn  drn_0" "gma14.drn"
-  add_package_if_present "  RIV6  gma14.riv  riv_0" "gma14.riv"
-  add_package_if_present "  GHB6  gma14.ghb  ghb_0" "gma14.ghb"
-  add_package_if_present "  WEL6  gma14.wel  wel_0" "gma14.wel"
-  add_package_if_present "  WEL6  gma14.irr  irr" "gma14.irr"
-  add_package_if_present "  RCH6  gma14_rch_oc.rcha  rch_oc" "gma14_rch_oc.rcha"
-  add_package_if_present "  RCH6  gma14_rch_sc.rcha  rch_sc" "gma14_rch_sc.rcha"
-  add_package_if_present "  CSUB6 gma14.csub  csub" "gma14.csub"
-  add_package_if_present "  STO6  gma14.sto  sto" "gma14.sto"
-  add_package_if_present "  OBS6  gma14.obs  obs" "gma14.obs"
+  cat <<'EOF' >"$nam_path"
+BEGIN options
+  NEWTON  UNDER_RELAXATION
+END options
 
-  {
-    cat <<'EOF'
 BEGIN packages
-EOF
-    if [[ ${#packages[@]} -gt 0 ]]; then
-      printf '%s\n' "${packages[@]}"
-    fi
-    cat <<'EOF'
+  DIS6  gma14.dis  dis
+  IC6  gma14.ic  ic
+  OC6  gma14.oc  oc
+  NPF6  gma14.npf  npf
+  DRN6  gma14.drn  drn_0
+  RIV6  gma14.riv  riv_0
+  GHB6  gma14.ghb  ghb_0
+  WEL6  gma14.wel  wel_0
+  WEL6  gma14.irr  irr
+  RCH6  gma14_rch_oc.rcha  rch_oc
+  RCH6  gma14_rch_sc.rcha  rch_sc
+  CSUB6 gma14.csub  csub
+  STO6  gma14.sto  sto
+  OBS6  gma14.obs  obs
 END packages
 EOF
-  } >"$nam_path"
 }
 
 rm -rf "$RUN_ROOT"
