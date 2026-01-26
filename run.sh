@@ -2,16 +2,20 @@
 set -euo pipefail
 
 
+export GIT_REPO_URL="https://github.com/wmobley/modflow6"
 export COOKBOOK_NAME="FloPy"
 export COOKBOOK_CONDA_ENV="flopy"
+export GIT_BRANCH="${GIT_BRANCH:-main}"
+export DOWNLOAD_LATEST_VERSION="${DOWNLOAD_LATEST_VERSION:-false}"
 IS_GPU_JOB=false
 
 function export_repo_variables() {
 	COOKBOOK_DIR=${WORK}/cookbooks
+	COOKBOOK_WORKSPACE_DIR=${COOKBOOK_DIR}/${COOKBOOK_NAME}
 
 	COOKBOOK_REPOSITORY_PARENT_DIR=${COOKBOOK_DIR}/.repository
 	COOKBOOK_REPOSITORY_DIR=${COOKBOOK_REPOSITORY_PARENT_DIR}/${COOKBOOK_NAME}
-	UPDATE_AVAILABLE_FILE=./UPDATE_AVAILABLE.txt
+	UPDATE_AVAILABLE_FILE=${COOKBOOK_WORKSPACE_DIR}/UPDATE_AVAILABLE.txt
 	NODE_HOSTNAME_PREFIX=$(hostname -s) # Short Host Name  -->  name of compute node: c###-###
 	NODE_HOSTNAME_DOMAIN=$(hostname -d) # DNS Name  -->  stampede2.tacc.utexas.edu
 	NODE_HOSTNAME_LONG=$(hostname -f)   # Fully Qualified Domain Name  -->  c###-###.stampede2.tacc.utexas.edu
@@ -48,6 +52,24 @@ function install_conda() {
 	unset PYTHONPATH
 }
 
+function clone_cookbook_on_workspace() {
+	DATE_FILE_SUFFIX=$(date +%Y%m%d%H%M%S)
+	if [ ! -d "$COOKBOOK_WORKSPACE_DIR" ]; then
+		git clone ${GIT_REPO_URL} --branch ${GIT_BRANCH} ${COOKBOOK_WORKSPACE_DIR}
+	else
+		if [ ${DOWNLOAD_LATEST_VERSION} = "true" ]; then
+			mv ${COOKBOOK_WORKSPACE_DIR} ${COOKBOOK_WORKSPACE_DIR}-${DATE_FILE_SUFFIX}
+			git clone ${GIT_REPO_URL} --branch ${GIT_BRANCH} ${COOKBOOK_WORKSPACE_DIR}
+		fi
+	fi
+}
+
+function init_directory() {
+	mkdir -p ${COOKBOOK_REPOSITORY_PARENT_DIR}
+	clone_cookbook_on_workspace
+	cd ${COOKBOOK_WORKSPACE_DIR}
+}
+
 
 function conda_environment_exists() {
 	conda env list | grep "${COOKBOOK_CONDA_ENV}"
@@ -80,6 +102,7 @@ function handle_installation() {
 #Execution
 install_conda
 export_repo_variables
+init_directory
 handle_installation
 
 
