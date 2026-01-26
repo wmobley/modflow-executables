@@ -128,6 +128,62 @@ INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
 RUN_ROOT="$PWD/run"
 
+create_mfsim_nam() {
+  local nam_path="$RUN_ROOT/mfsim.nam"
+  if [[ -f "$nam_path" ]]; then
+    return 0
+  fi
+
+  local packages=()
+  local file
+
+  add_package_if_present() {
+    local line="$1"
+    local filename="$2"
+    if [[ -f "$RUN_ROOT/$filename" ]]; then
+      packages+=("$line")
+      return 0
+    fi
+    if [[ -f "$INPUTS_DIR/$filename" ]]; then
+      cp -a "$INPUTS_DIR/$filename" "$RUN_ROOT/"
+      packages+=("$line")
+      return 0
+    fi
+    return 1
+  }
+
+  add_package_if_present "  DIS6  gma14.dis  dis" "gma14.dis"
+  add_package_if_present "  IC6  gma14.ic  ic" "gma14.ic"
+  add_package_if_present "  OC6  gma14.oc  oc" "gma14.oc"
+  add_package_if_present "  NPF6  gma14.npf  npf" "gma14.npf"
+  add_package_if_present "  DRN6  gma14.drn  drn_0" "gma14.drn"
+  add_package_if_present "  RIV6  gma14.riv  riv_0" "gma14.riv"
+  add_package_if_present "  GHB6  gma14.ghb  ghb_0" "gma14.ghb"
+  add_package_if_present "  WEL6  gma14.wel  wel_0" "gma14.wel"
+  add_package_if_present "  WEL6  gma14.irr  irr" "gma14.irr"
+  add_package_if_present "  RCH6  gma14_rch_oc.rcha  rch_oc" "gma14_rch_oc.rcha"
+  add_package_if_present "  RCH6  gma14_rch_sc.rcha  rch_sc" "gma14_rch_sc.rcha"
+  add_package_if_present "  CSUB6 gma14.csub  csub" "gma14.csub"
+  add_package_if_present "  STO6  gma14.sto  sto" "gma14.sto"
+  add_package_if_present "  OBS6  gma14.obs  obs" "gma14.obs"
+
+  {
+    cat <<'EOF'
+BEGIN options
+  NEWTON  UNDER_RELAXATION
+END options
+
+BEGIN packages
+EOF
+    if [[ ${#packages[@]} -gt 0 ]]; then
+      printf '%s\n' "${packages[@]}"
+    fi
+    cat <<'EOF'
+END packages
+EOF
+  } >"$nam_path"
+}
+
 rm -rf "$RUN_ROOT"
 mkdir -p "$RUN_ROOT" "$OUTPUTS_DIR"
 
@@ -160,8 +216,11 @@ if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
 fi
 
 if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
-  echo "Unable to locate mfsim.nam in the provided inputs." >&2
-  exit 1
+  if ! create_mfsim_nam; then
+    echo "Unable to locate or create mfsim.nam in the provided inputs." >&2
+    exit 1
+  fi
+  SIM_DIR="$RUN_ROOT"
 fi
 
 python modflow.py
