@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.a2b3b77",
+  "version": "0.0.a95ec42",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-a2b3b77",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-a95ec42",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -35,21 +35,21 @@
           "name": "MF6 NAM CKAN URL",
           "description": "Direct CKAN download URL for the MF6 simulation name file (typically mfsim.nam).",
           "inputMode": "REQUIRED",
-          "arg": "",
+          "arg": "__REQUIRED_NAM_URL__",
           "notes": {}
         },
         {
           "name": "WEL CKAN URL",
           "description": "Direct CKAN download URL for the replacement WEL package file. May come from a different dataset.",
-          "inputMode": "OPTIONAL",
-          "arg": "",
+          "inputMode": "REQUIRED",
+          "arg": "__NONE__",
           "notes": {}
         },
         {
           "name": "RCH CKAN URL",
           "description": "Direct CKAN download URL for the replacement RCH/RCHA package file. May come from a different dataset.",
-          "inputMode": "OPTIONAL",
-          "arg": "",
+          "inputMode": "REQUIRED",
+          "arg": "__NONE__",
           "notes": {}
         }
       ],

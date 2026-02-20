@@ -129,6 +129,27 @@ NAM_URL="${1:-}"
 WEL_URL="${2:-}"
 RCH_URL="${3:-}"
 
+normalize_arg_url() {
+  local v="${1:-}"
+  case "$v" in
+    "__NONE__"|"NONE"|"none"|"null"|"NULL")
+      echo ""
+      ;;
+    *)
+      echo "$v"
+      ;;
+  esac
+}
+
+NAM_URL="$(normalize_arg_url "$NAM_URL")"
+WEL_URL="$(normalize_arg_url "$WEL_URL")"
+RCH_URL="$(normalize_arg_url "$RCH_URL")"
+
+if [[ -z "$NAM_URL" || "$NAM_URL" == "__REQUIRED_NAM_URL__" ]]; then
+  echo "MF6 NAM CKAN URL is required and must be a valid CKAN resource download URL." >&2
+  exit 1
+fi
+
 download_url_to() {
   local url="$1"
   local target="$2"
