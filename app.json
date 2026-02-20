@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.a95ec42",
+  "version": "0.0.905bb64",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-a95ec42",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-905bb64",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -30,29 +30,7 @@
     "mpiCmd": null,
     "cmdPrefix": "mkdir $PWD/work $PWD/home $PWD/scratch;",
     "parameterSet": {
-      "appArgs": [
-        {
-          "name": "MF6 NAM CKAN URL",
-          "description": "Direct CKAN download URL for the MF6 simulation name file (typically mfsim.nam).",
-          "inputMode": "REQUIRED",
-          "arg": "__REQUIRED_NAM_URL__",
-          "notes": {}
-        },
-        {
-          "name": "WEL CKAN URL",
-          "description": "Direct CKAN download URL for the replacement WEL package file. May come from a different dataset.",
-          "inputMode": "REQUIRED",
-          "arg": "__NONE__",
-          "notes": {}
-        },
-        {
-          "name": "RCH CKAN URL",
-          "description": "Direct CKAN download URL for the replacement RCH/RCHA package file. May come from a different dataset.",
-          "inputMode": "REQUIRED",
-          "arg": "__NONE__",
-          "notes": {}
-        }
-      ],
+      "appArgs": [],
       "schedulerOptions": [
         {
           "name": "TACC Scheduler Profile",
@@ -73,7 +51,29 @@
           }
         }
       ],
-      "envVariables": [],
+      "envVariables": [
+        {
+          "key": "MF6_NAM_URL",
+          "value": "__REQUIRED_NAM_URL__",
+          "description": "Direct CKAN download URL for the MF6 simulation name file (typically mfsim.nam).",
+          "inputMode": "REQUIRED",
+          "notes": {}
+        },
+        {
+          "key": "MF6_WEL_URL",
+          "value": "__NONE__",
+          "description": "Direct CKAN download URL for the replacement WEL package file. May come from a different dataset.",
+          "inputMode": "REQUIRED",
+          "notes": {}
+        },
+        {
+          "key": "MF6_RCH_URL",
+          "value": "__NONE__",
+          "description": "Direct CKAN download URL for the replacement RCH/RCHA package file. May come from a different dataset.",
+          "inputMode": "REQUIRED",
+          "notes": {}
+        }
+      ],
       "archiveFilter": {
         "includes": [],
         "excludes": [],

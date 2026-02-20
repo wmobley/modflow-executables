@@ -125,9 +125,9 @@ log() {
 }
 
 CKAN_BASE_URL="${CKAN_BASE_URL:-https://ckan.tacc.utexas.edu}"
-NAM_URL="${1:-}"
-WEL_URL="${2:-}"
-RCH_URL="${3:-}"
+NAM_URL="${MF6_NAM_URL:-${1:-}}"
+WEL_URL="${MF6_WEL_URL:-${2:-}}"
+RCH_URL="${MF6_RCH_URL:-${3:-}}"
 
 normalize_arg_url() {
   local v="${1:-}"
