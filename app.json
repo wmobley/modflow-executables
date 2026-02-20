@@ -1,13 +1,15 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.4",
+  "version": "0.0.a2b3b77",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
   "runtime": "SINGULARITY",
   "runtimeVersion": null,
-  "runtimeOptions": ["SINGULARITY_RUN"],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-9bda24f",
+  "runtimeOptions": [
+    "SINGULARITY_RUN"
+  ],
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-a2b3b77",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -20,7 +22,7 @@
     "execSystemExecDir": "${JobWorkingDir}",
     "execSystemInputDir": "${JobWorkingDir}",
     "execSystemOutputDir": "${JobWorkingDir}/output",
-    "execSystemLogicalQueue": "development",
+    "execSystemLogicalQueue": "vm-small",
     "archiveSystemId": "cloud.data",
     "archiveSystemDir": "HOST_EVAL($HOME)/tapis-jobs-archive/${JobCreateDate}/${JobName}-${JobUUID}",
     "archiveOnAppError": true,
@@ -28,7 +30,29 @@
     "mpiCmd": null,
     "cmdPrefix": "mkdir $PWD/work $PWD/home $PWD/scratch;",
     "parameterSet": {
-      "appArgs": [],
+      "appArgs": [
+        {
+          "name": "MF6 NAM CKAN URL",
+          "description": "Direct CKAN download URL for the MF6 simulation name file (typically mfsim.nam).",
+          "inputMode": "REQUIRED",
+          "arg": "",
+          "notes": {}
+        },
+        {
+          "name": "WEL CKAN URL",
+          "description": "Direct CKAN download URL for the replacement WEL package file. May come from a different dataset.",
+          "inputMode": "OPTIONAL",
+          "arg": "",
+          "notes": {}
+        },
+        {
+          "name": "RCH CKAN URL",
+          "description": "Direct CKAN download URL for the replacement RCH/RCHA package file. May come from a different dataset.",
+          "inputMode": "OPTIONAL",
+          "arg": "",
+          "notes": {}
+        }
+      ],
       "schedulerOptions": [
         {
           "name": "TACC Scheduler Profile",
@@ -58,31 +82,61 @@
     },
     "fileInputs": [
       {
-        "name": "simulation-zip",
-        "description": "Optional ZIP archive containing an entire MODFLOW 6 simulation (must include mfsim.nam at the top level).",
+        "name": "gma14-wel",
+        "description": "WEL6 package file",
         "inputMode": "OPTIONAL",
         "autoMountLocal": true,
-        "sourceUrl": null,
-        "targetPath": "simulation.zip"
+        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14/gma14.wel",
+        "targetPath": "gma14.wel"
+      },
+      {
+        "name": "gma14-rch-oc",
+        "description": "RCH6 OC recharge package file",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14/gma14_rch_oc.rcha",
+        "targetPath": "gma14_rch_oc.rcha"
+      },
+      {
+        "name": "gma14-rch-sc",
+        "description": "RCH6 SC recharge package file",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14/gma14_rch_sc.rcha",
+        "targetPath": "gma14_rch_sc.rcha"
+      },
+      {
+        "name": "gma14-default-dir",
+        "description": "Default GMA14 input directory (all non-interactive files).",
+        "inputMode": "REQUIRED",
+        "autoMountLocal": true,
+        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14",
+        "targetPath": "default_data"
       }
     ],
     "fileInputArrays": [],
     "nodeCount": 1,
     "coresPerNode": 1,
     "memoryMB": 1000,
-    "maxMinutes": 10,
+    "maxMinutes": 60,
     "subscriptions": [],
     "tags": []
   },
-  "tags": ["portalName: ALL"],
+  "tags": [
+    "portalName: ALL"
+  ],
   "notes": {
     "label": "MODFLOW 6",
     "helpUrl": "https://www.simonwenkel.com/notes/geo/software/modflow/compiling-modflow-on-linux.html",
-    "helpText": "Provide either a MODFLOW 6 simulation directory or a ZIP archive that contains mfsim.nam and all required package files.",
+    "helpText": "Provide a CKAN URL to an MF6 name file (mfsim.nam), plus optional CKAN URLs for replacement WEL and RCH files. The app will pull the remaining files from the NAM file dataset and run MF6.",
     "hideNodeCountAndCoresPerNode": true,
     "isInteractive": false,
     "icon": "jupyter",
     "category": "Data Processing",
-    "queueFilter": ["vm-small","development", "normal"]
+    "queueFilter": [
+      "vm-small",
+      "development",
+      "normal"
+    ]
   }
 }
