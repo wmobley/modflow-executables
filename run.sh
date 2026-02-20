@@ -145,11 +145,6 @@ NAM_URL="$(normalize_arg_url "$NAM_URL")"
 WEL_URL="$(normalize_arg_url "$WEL_URL")"
 RCH_URL="$(normalize_arg_url "$RCH_URL")"
 
-if [[ -z "$NAM_URL" || "$NAM_URL" == "__REQUIRED_NAM_URL__" ]]; then
-  echo "MF6 NAM CKAN URL is required and must be a valid CKAN resource download URL." >&2
-  exit 1
-fi
-
 download_url_to() {
   local url="$1"
   local target="$2"
@@ -379,6 +374,7 @@ elif [[ -d "$INPUTS_DIR/default_data" ]]; then
 fi
 
 stage_required_files "mfsim.nam" "gma14.nam"
+stage_required_files "override_wel.pkg" "override_rch.pkg"
 
 SIM_DIR="$RUN_ROOT"
 if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
@@ -413,6 +409,27 @@ stage_required_files \
   "gma14.sto" \
   "gma14.obs" \
   "gma14.csub.obs"
+
+# Apply local uploaded override package files, if provided.
+model_nam_rel="$(extract_mf6_model_nam_from_mfsim "$SIM_DIR/mfsim.nam" || true)"
+if [[ -n "$model_nam_rel" && -f "$SIM_DIR/$model_nam_rel" ]]; then
+  expected_wel="$(extract_expected_pkg_file "$SIM_DIR/$model_nam_rel" "^WEL" || true)"
+  expected_rch="$(extract_expected_pkg_file "$SIM_DIR/$model_nam_rel" "^(RCH|RCHA)" || true)"
+else
+  expected_wel=""
+  expected_rch=""
+fi
+
+if [[ -f "$RUN_ROOT/override_wel.pkg" ]]; then
+  wel_target="${expected_wel:-gma14.wel}"
+  log "Applying uploaded WEL override as $wel_target"
+  cp -f "$RUN_ROOT/override_wel.pkg" "$SIM_DIR/$wel_target"
+fi
+if [[ -f "$RUN_ROOT/override_rch.pkg" ]]; then
+  rch_target="${expected_rch:-gma14_rch_oc.rcha}"
+  log "Applying uploaded RCH override as $rch_target"
+  cp -f "$RUN_ROOT/override_rch.pkg" "$SIM_DIR/$rch_target"
+fi
 
 python modflow.py "$SIM_DIR/mfsim.nam"
 
