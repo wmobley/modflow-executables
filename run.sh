@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export GIT_REPO_URL="https://github.com/wmobley/modflow6"
 export COOKBOOK_NAME="FloPy"
@@ -253,6 +254,29 @@ stage_required_files() {
   done
 }
 
+resolve_default_data_dir() {
+  local configured_dir_file="$SCRIPT_DIR/carrizo-wilcox-dir.txt"
+  local configured_dir=""
+
+  if [[ -f "$configured_dir_file" ]]; then
+    configured_dir="$(head -n 1 "$configured_dir_file" | tr -d '\r' | sed 's/[[:space:]]*$//')"
+    if [[ -n "$configured_dir" ]]; then
+      if [[ -d "$configured_dir" ]]; then
+        DEFAULT_DATA_DIR="$configured_dir"
+        log "Using default data directory from $(basename "$configured_dir_file"): $DEFAULT_DATA_DIR"
+        return
+      fi
+      log "Configured default data directory does not exist: $configured_dir"
+    fi
+  fi
+
+  if [[ -d "$RUN_ROOT/default_data" ]]; then
+    DEFAULT_DATA_DIR="$RUN_ROOT/default_data"
+  elif [[ -d "$INPUTS_DIR/default_data" ]]; then
+    DEFAULT_DATA_DIR="$INPUTS_DIR/default_data"
+  fi
+}
+
 if [[ "$USE_INPUT_ROOT" == "false" ]]; then
   rm -rf "$RUN_ROOT"
   mkdir -p "$RUN_ROOT"
@@ -367,11 +391,7 @@ else
   fi
 fi
 
-if [[ -d "$RUN_ROOT/default_data" ]]; then
-  DEFAULT_DATA_DIR="$RUN_ROOT/default_data"
-elif [[ -d "$INPUTS_DIR/default_data" ]]; then
-  DEFAULT_DATA_DIR="$INPUTS_DIR/default_data"
-fi
+resolve_default_data_dir
 
 stage_required_files "mfsim.nam" "gma14.nam"
 stage_required_files "override_wel.pkg" "override_rch.pkg"
