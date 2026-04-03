@@ -1,8 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 export GIT_REPO_URL="https://github.com/wmobley/modflow6"
 export COOKBOOK_NAME="FloPy"
 export COOKBOOK_CONDA_ENV="flopy"
@@ -126,9 +124,31 @@ log() {
 }
 
 CKAN_BASE_URL="${CKAN_BASE_URL:-https://ckan.tacc.utexas.edu}"
-NAM_URL="${MF6_NAM_URL:-${1:-}}"
-WEL_URL="${MF6_WEL_URL:-${2:-}}"
-RCH_URL="${MF6_RCH_URL:-${3:-}}"
+DEFAULT_DATA_DIR_ARG=""
+NAM_URL="${MF6_NAM_URL:-}"
+WEL_URL="${MF6_WEL_URL:-}"
+RCH_URL="${MF6_RCH_URL:-}"
+
+for arg in "$@"; do
+  case "$arg" in
+    ""|"__NONE__"|"NONE"|"none"|"null"|"NULL")
+      ;;
+    http://*|https://*)
+      if [[ -z "$NAM_URL" ]]; then
+        NAM_URL="$arg"
+      elif [[ -z "$WEL_URL" ]]; then
+        WEL_URL="$arg"
+      elif [[ -z "$RCH_URL" ]]; then
+        RCH_URL="$arg"
+      fi
+      ;;
+    *)
+      if [[ -z "$DEFAULT_DATA_DIR_ARG" ]]; then
+        DEFAULT_DATA_DIR_ARG="$arg"
+      fi
+      ;;
+  esac
+done
 
 normalize_arg_url() {
   local v="${1:-}"
@@ -255,19 +275,15 @@ stage_required_files() {
 }
 
 resolve_default_data_dir() {
-  local configured_dir_file="$SCRIPT_DIR/carrizo-wilcox-dir.txt"
-  local configured_dir=""
+  local configured_dir="${DEFAULT_DATA_DIR_ARG:-}"
 
-  if [[ -f "$configured_dir_file" ]]; then
-    configured_dir="$(head -n 1 "$configured_dir_file" | tr -d '\r' | sed 's/[[:space:]]*$//')"
-    if [[ -n "$configured_dir" ]]; then
-      if [[ -d "$configured_dir" ]]; then
-        DEFAULT_DATA_DIR="$configured_dir"
-        log "Using default data directory from $(basename "$configured_dir_file"): $DEFAULT_DATA_DIR"
-        return
-      fi
-      log "Configured default data directory does not exist: $configured_dir"
+  if [[ -n "$configured_dir" ]]; then
+    if [[ -d "$configured_dir" ]]; then
+      DEFAULT_DATA_DIR="$configured_dir"
+      log "Using default data directory from app arg: $DEFAULT_DATA_DIR"
+      return
     fi
+    log "Configured default data directory does not exist: $configured_dir"
   fi
 
   if [[ -d "$RUN_ROOT/default_data" ]]; then
