@@ -1,1 +1,0 @@
-/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/twdb_gam_collection/Carrizo-Wilcox_Aquifer_central_portion_GAM_version_3.02/Model_File/czwx_c_qcsp_v3.02_model_files/czwx_c_qcsp_v3.02_model_files/GMA12_Modified_MODFLOW/Modified_GAM/gwv-modflow-usg-Modified

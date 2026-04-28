@@ -1,12 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
+# -----------------------------------------------------------------------------
+# Cookbook/runtime bootstrap configuration.
+# -----------------------------------------------------------------------------
 export GIT_REPO_URL="https://github.com/wmobley/modflow6"
 export COOKBOOK_NAME="FloPy"
 export COOKBOOK_CONDA_ENV="flopy"
 export GIT_BRANCH="${GIT_BRANCH:-main}"
 export DOWNLOAD_LATEST_VERSION="${DOWNLOAD_LATEST_VERSION:-false}"
 IS_GPU_JOB=false
+
+# -----------------------------------------------------------------------------
+# Cookbook/runtime bootstrap helpers.
+# These functions prepare the FloPy runtime used by the Tapis job.
+# -----------------------------------------------------------------------------
 
 function export_repo_variables() {
 	COOKBOOK_DIR=./
@@ -110,366 +118,154 @@ function handle_installation() {
 	
 }
 
-#Execution
-install_conda
-export_repo_variables
-ensure_git
-init_directory
-handle_installation
-
-
-
-log() {
-  printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
-}
-
-CKAN_BASE_URL="${CKAN_BASE_URL:-https://ckan.tacc.utexas.edu}"
-DEFAULT_DATA_DIR_ARG=""
-NAM_URL="${MF6_NAM_URL:-}"
-WEL_URL="${MF6_WEL_URL:-}"
-RCH_URL="${MF6_RCH_URL:-}"
-
-for arg in "$@"; do
-  case "$arg" in
-    ""|"__NONE__"|"NONE"|"none"|"null"|"NULL")
-      ;;
-    http://*|https://*)
-      if [[ -z "$NAM_URL" ]]; then
-        NAM_URL="$arg"
-      elif [[ -z "$WEL_URL" ]]; then
-        WEL_URL="$arg"
-      elif [[ -z "$RCH_URL" ]]; then
-        RCH_URL="$arg"
-      fi
-      ;;
-    *)
-      if [[ -z "$DEFAULT_DATA_DIR_ARG" ]]; then
-        DEFAULT_DATA_DIR_ARG="$arg"
-      fi
-      ;;
-  esac
-done
-
-normalize_arg_url() {
-  local v="${1:-}"
-  case "$v" in
-    "__NONE__"|"NONE"|"none"|"null"|"NULL")
-      echo ""
-      ;;
-    *)
-      echo "$v"
-      ;;
-  esac
-}
-
-NAM_URL="$(normalize_arg_url "$NAM_URL")"
-WEL_URL="$(normalize_arg_url "$WEL_URL")"
-RCH_URL="$(normalize_arg_url "$RCH_URL")"
-
-download_url_to() {
-  local url="$1"
-  local target="$2"
-  mkdir -p "$(dirname "$target")"
-  curl -fsSL "$url" -o "$target"
-}
-
-ckan_dataset_from_url() {
-  local url="$1"
-  if [[ "$url" =~ /dataset/([^/]+)/resource/[^/]+/download/[^/?#]+ ]]; then
-    echo "${BASH_REMATCH[1]}"
-    return 0
-  fi
-  return 1
-}
-
-ckan_resource_id_from_url() {
-  local url="$1"
-  if [[ "$url" =~ /resource/([^/]+)/download/[^/?#]+ ]]; then
-    echo "${BASH_REMATCH[1]}"
-    return 0
-  fi
-  return 1
-}
-
-url_decoded_basename() {
-  local url="$1"
-  python3 - "$url" <<'PY'
-import os, sys
-from urllib.parse import unquote, urlparse
-u = sys.argv[1]
-path = urlparse(u).path
-print(unquote(os.path.basename(path)))
-PY
-}
-
-fetch_ckan_dataset_resources() {
-  local dataset="$1"
-  local out_json="$2"
-  curl -fsSL "${CKAN_BASE_URL}/api/3/action/package_show?id=${dataset}" -o "$out_json"
-}
-
-extract_mf6_model_nam_from_mfsim() {
-  local sim_nam="$1"
-  awk '
-    /^[[:space:]]*#/ {next}
-    {
-      line=$0
-      sub(/[[:space:]]*#.*/, "", line)
-      n=split(line, a, /[[:space:]]+/)
-      if (n >= 2 && a[1] ~ /^GWF/) {
-        print a[2]
-        exit
-      }
-    }
-  ' "$sim_nam"
-}
-
-extract_expected_pkg_file() {
-  local model_nam="$1"
-  local pkg_regex="$2"
-  awk -v pkg="$pkg_regex" '
-    /^[[:space:]]*#/ {next}
-    {
-      line=$0
-      sub(/[[:space:]]*#.*/, "", line)
-      n=split(line, a, /[[:space:]]+/)
-      if (n >= 2 && a[1] ~ pkg) {
-        print a[2]
-        exit
-      }
-    }
-  ' "$model_nam"
+# -----------------------------------------------------------------------------
+# MODFLOW 6 job assembly configuration.
+# These variables control where staged inputs, defaults, and outputs live.
+# -----------------------------------------------------------------------------
+function log() {
+	printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
 }
 
 INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
 RUN_ROOT="$PWD/run"
 DEFAULT_DATA_DIR=""
+DEFAULT_STAGE_DIR="$RUN_ROOT/default_data"
+DEFAULT_DATA_DIR_ARG=""
 
-SIM_ARCHIVE="$INPUTS_DIR/simulation.zip"
-shopt -s nullglob
-other_archives=("$INPUTS_DIR"/*.zip)
-shopt -u nullglob
+# -----------------------------------------------------------------------------
+# Argument parsing and input staging.
+# -----------------------------------------------------------------------------
+function parse_args() {
+	local arg
 
-USE_INPUT_ROOT=false
-if [[ ! -f "$SIM_ARCHIVE" && ${#other_archives[@]} -eq 0 && "$INPUTS_DIR" == "$PWD" ]]; then
-  USE_INPUT_ROOT=true
-  RUN_ROOT="$PWD"
-fi
-
-stage_required_files() {
-  local f
-  for f in "$@"; do
-    if [[ -d "$INPUTS_DIR/$f" && ! -d "$RUN_ROOT/$f" ]]; then
-      cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
-    elif [[ -f "$INPUTS_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
-      cp -a "$INPUTS_DIR/$f" "$RUN_ROOT/"
-    elif [[ -n "$DEFAULT_DATA_DIR" ]]; then
-      if [[ -d "$DEFAULT_DATA_DIR/$f" && ! -d "$RUN_ROOT/$f" ]]; then
-        cp -a "$DEFAULT_DATA_DIR/$f" "$RUN_ROOT/"
-      elif [[ -f "$DEFAULT_DATA_DIR/$f" && ! -f "$RUN_ROOT/$f" ]]; then
-        cp -a "$DEFAULT_DATA_DIR/$f" "$RUN_ROOT/"
-      fi
-    fi
-  done
+	DEFAULT_DATA_DIR_ARG=""
+	for arg in "$@"; do
+		case "$arg" in
+			""|"__NONE__"|"NONE"|"none"|"null"|"NULL")
+				;;
+			*)
+				if [[ -z "$DEFAULT_DATA_DIR_ARG" ]]; then
+					DEFAULT_DATA_DIR_ARG="$arg"
+				fi
+				;;
+		esac
+	done
 }
 
-resolve_default_data_dir() {
-  local configured_dir="${DEFAULT_DATA_DIR_ARG:-}"
+function resolve_default_data_dir() {
+	local configured_dir="${DEFAULT_DATA_DIR_ARG:-}"
 
-  if [[ -n "$configured_dir" ]]; then
-    if [[ -d "$configured_dir" ]]; then
-      DEFAULT_DATA_DIR="$configured_dir"
-      log "Using default data directory from app arg: $DEFAULT_DATA_DIR"
-      return
-    fi
-    log "Configured default data directory does not exist: $configured_dir"
-  fi
+	if [[ -n "$configured_dir" ]]; then
+		if [[ -d "$configured_dir" ]]; then
+			DEFAULT_DATA_DIR="$configured_dir"
+			log "Using default data directory from app arg: $DEFAULT_DATA_DIR"
+			return
+		fi
+		log "Configured default data directory does not exist: $configured_dir"
+	fi
 
-  if [[ -d "$RUN_ROOT/default_data" ]]; then
-    DEFAULT_DATA_DIR="$RUN_ROOT/default_data"
-  elif [[ -d "$INPUTS_DIR/default_data" ]]; then
-    DEFAULT_DATA_DIR="$INPUTS_DIR/default_data"
-  fi
+	if [[ -d "$RUN_ROOT/default_data" ]]; then
+		DEFAULT_DATA_DIR="$RUN_ROOT/default_data"
+	elif [[ -d "$INPUTS_DIR/default_data" ]]; then
+		DEFAULT_DATA_DIR="$INPUTS_DIR/default_data"
+	fi
 }
 
-if [[ "$USE_INPUT_ROOT" == "false" ]]; then
-  rm -rf "$RUN_ROOT"
-  mkdir -p "$RUN_ROOT"
-fi
-mkdir -p "$OUTPUTS_DIR"
+# Copy any configured baseline directory into a separate tree so uploaded files
+# can override it without mutating the original source directory.
+function stage_default_data_dir() {
+	if [[ -z "$DEFAULT_DATA_DIR" ]]; then
+		return
+	fi
+	mkdir -p "$DEFAULT_STAGE_DIR"
+	log "Staging baseline MF6 files from $DEFAULT_DATA_DIR into $DEFAULT_STAGE_DIR"
+	cp -a "$DEFAULT_DATA_DIR/." "$DEFAULT_STAGE_DIR/"
+}
 
-if [[ -n "$NAM_URL" ]]; then
-  log "NAM URL provided; pulling CKAN resources from URLs."
+# Stage the uploaded inputs into a clean working directory and expand ZIP files
+# so all subsequent resolution can work from a single filesystem tree.
+function stage_user_inputs() {
+	local sim_archive="$INPUTS_DIR/simulation.zip"
+	local archive
 
-  nam_file_name="$(url_decoded_basename "$NAM_URL")"
-  if [[ -z "$nam_file_name" ]]; then
-    echo "Unable to infer name-file basename from NAM URL." >&2
-    exit 1
-  fi
-  download_url_to "$NAM_URL" "$RUN_ROOT/$nam_file_name"
-  log "Downloaded name file: $nam_file_name"
-  if [[ "$nam_file_name" != "mfsim.nam" ]]; then
-    cp -f "$RUN_ROOT/$nam_file_name" "$RUN_ROOT/mfsim.nam"
-    log "Copied $nam_file_name to mfsim.nam"
-  fi
+	rm -rf "$RUN_ROOT"
+	mkdir -p "$RUN_ROOT"
 
-  dataset_name="$(ckan_dataset_from_url "$NAM_URL" || true)"
-  nam_resource_id="$(ckan_resource_id_from_url "$NAM_URL" || true)"
-  wel_resource_id="$(ckan_resource_id_from_url "$WEL_URL" || true)"
-  rch_resource_id="$(ckan_resource_id_from_url "$RCH_URL" || true)"
+	if [[ -d "$INPUTS_DIR" ]]; then
+		log "Copying staged inputs from $INPUTS_DIR into $RUN_ROOT"
+		cp -a "$INPUTS_DIR/." "$RUN_ROOT/" 2>/dev/null || true
+	fi
 
-  if [[ -z "$dataset_name" ]]; then
-    echo "NAM URL must be a CKAN dataset resource download URL." >&2
-    exit 1
-  fi
+	if [[ -f "$sim_archive" ]]; then
+		log "Unpacking simulation.zip into $RUN_ROOT"
+		unzip -q "$sim_archive" -d "$RUN_ROOT"
+	else
+		shopt -s nullglob
+		local archives=("$INPUTS_DIR"/*.zip)
+		shopt -u nullglob
+		for archive in "${archives[@]}"; do
+			if [[ "$archive" == "$sim_archive" ]]; then
+				continue
+			fi
+			log "Unpacking $(basename "$archive") into $RUN_ROOT"
+			unzip -q "$archive" -d "$RUN_ROOT"
+		done
+	fi
+}
 
-  pkg_json="$RUN_ROOT/package_show.json"
-  fetch_ckan_dataset_resources "$dataset_name" "$pkg_json"
+# -----------------------------------------------------------------------------
+# MODFLOW 6 name-file resolution.
+# This shell wrapper delegates MF6 file discovery and name-file generation to a
+# dedicated Python script so run.sh remains focused on orchestration.
+# -----------------------------------------------------------------------------
+function resolve_sim_nam_path() {
+	python3 resolve_sim_nam.py "$RUN_ROOT"
+}
 
-  python3 - "$pkg_json" "${nam_resource_id:-}" "${wel_resource_id:-}" "${rch_resource_id:-}" <<'PY' \
-    | while IFS=$'\t' read -r rid rurl; do
-import json, sys
-from urllib.parse import urlparse
+# -----------------------------------------------------------------------------
+# High-level workflow helpers.
+# -----------------------------------------------------------------------------
+function prepare_runtime_environment() {
+	install_conda
+	export_repo_variables
+	ensure_git
+	init_directory
+	handle_installation
+}
 
-pkg_json = sys.argv[1]
-skip_ids = {x for x in sys.argv[2:] if x}
+function prepare_run() {
+	mkdir -p "$OUTPUTS_DIR"
+	stage_user_inputs
+	resolve_default_data_dir
+	stage_default_data_dir
+}
 
-with open(pkg_json, "r", encoding="utf-8") as f:
-    payload = json.load(f)
+# Resolve the simulation entrypoint and launch the MODFLOW 6 executable.
+function run_modflow_simulation() {
+	local sim_nam_path
 
-if not payload.get("success"):
-    raise SystemExit("CKAN package_show failed")
+	log "Resolving MODFLOW 6 simulation name file from staged inputs"
+	sim_nam_path="$(resolve_sim_nam_path)"
+	log "Using simulation name file: $sim_nam_path"
 
-for r in payload["result"].get("resources", []):
-    rid = r.get("id", "")
-    if rid in skip_ids:
-        continue
-    url = r.get("url", "")
-    if not url:
-        continue
-    if not urlparse(url).scheme:
-        continue
-    print(f"{rid}\t{url}")
-PY
-      fname="$(url_decoded_basename "$rurl")"
-      lower="${fname,,}"
-      if [[ "$fname" == "$nam_file_name" || "$fname" == "mfsim.nam" ]]; then
-        continue
-      fi
-      if [[ "$lower" == *.wel || "$lower" == *.rch || "$lower" == *.rcha ]]; then
-        continue
-      fi
-      if [[ -f "$RUN_ROOT/$fname" ]]; then
-        continue
-      fi
-      log "Downloading dataset resource: $fname"
-      download_url_to "$rurl" "$RUN_ROOT/$fname"
-    done
+	python modflow.py "$sim_nam_path"
+}
 
-  # Resolve expected package filenames from the uploaded simulation/model name files.
-  sim_nam_path="$RUN_ROOT/$nam_file_name"
-  model_nam_rel="$(extract_mf6_model_nam_from_mfsim "$sim_nam_path" || true)"
-  if [[ -n "$model_nam_rel" && -f "$RUN_ROOT/$model_nam_rel" ]]; then
-    expected_wel="$(extract_expected_pkg_file "$RUN_ROOT/$model_nam_rel" "^WEL" || true)"
-    expected_rch="$(extract_expected_pkg_file "$RUN_ROOT/$model_nam_rel" "^(RCH|RCHA)" || true)"
-  else
-    expected_wel=""
-    expected_rch=""
-  fi
+# Persist the entire run directory so generated name files and model outputs
+# are available in the archived Tapis job results.
+function archive_results() {
+	log "Copying simulation results to $OUTPUTS_DIR"
+	cp -a "$RUN_ROOT/." "$OUTPUTS_DIR/"
+}
 
-  if [[ -n "$WEL_URL" ]]; then
-    wel_target="${expected_wel:-$(url_decoded_basename "$WEL_URL")}"
-    log "Downloading WEL URL as $wel_target"
-    download_url_to "$WEL_URL" "$RUN_ROOT/$wel_target"
-  fi
-  if [[ -n "$RCH_URL" ]]; then
-    rch_target="${expected_rch:-$(url_decoded_basename "$RCH_URL")}"
-    log "Downloading RCH URL as $rch_target"
-    download_url_to "$RCH_URL" "$RUN_ROOT/$rch_target"
-  fi
-fi
+function main() {
+	prepare_runtime_environment
+	parse_args "$@"
+	prepare_run
+	run_modflow_simulation
+	archive_results
+	log "MODFLOW 6 run completed"
+}
 
-if [[ -f "$SIM_ARCHIVE" ]]; then
-  log "Unpacking simulation.zip into $RUN_ROOT"
-  unzip -q "$SIM_ARCHIVE" -d "$RUN_ROOT"
-else
-  if [[ ${#other_archives[@]} -gt 0 ]]; then
-    log "simulation.zip not found; unpacking ${other_archives[0]} into $RUN_ROOT"
-    unzip -q "${other_archives[0]}" -d "$RUN_ROOT"
-  else
-    if [[ "$USE_INPUT_ROOT" == "false" ]]; then
-      log "Copying inputs from $INPUTS_DIR into $RUN_ROOT"
-      cp -a "${INPUTS_DIR}/." "$RUN_ROOT/" 2>/dev/null || true
-    else
-      log "Using inputs directly from $INPUTS_DIR"
-    fi
-  fi
-fi
-
-resolve_default_data_dir
-
-stage_required_files "mfsim.nam" "gma14.nam"
-stage_required_files "override_wel.pkg" "override_rch.pkg"
-
-SIM_DIR="$RUN_ROOT"
-if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
-  # Allow nested directory structures and skip noise like __MACOSX.
-  mapfile -t sim_matches < <(find "$RUN_ROOT" -type f -name 'mfsim.nam' -print 2>/dev/null)
-  if [[ ${#sim_matches[@]} -gt 0 ]]; then
-    SIM_DIR="$(dirname "${sim_matches[0]}")"
-  fi
-fi
-
-if [[ ! -f "$SIM_DIR/mfsim.nam" ]]; then
-  echo "Unable to locate mfsim.nam in the provided inputs or default directory." >&2
-  exit 1
-fi
-
-stage_required_files \
-  "array_data" \
-  "gma14.dis" \
-  "gma14.ic" \
-  "gma14.oc" \
-  "gma14.npf" \
-  "gma14.drn" \
-  "gma14.riv" \
-  "gma14.ghb" \
-  "gma14.wel" \
-  "gma14.irr" \
-  "gma14.tdis" \
-  "gma14.ims" \
-  "gma14_rch_oc.rcha" \
-  "gma14_rch_sc.rcha" \
-  "gma14.csub" \
-  "gma14.sto" \
-  "gma14.obs" \
-  "gma14.csub.obs"
-
-# Apply local uploaded override package files, if provided.
-model_nam_rel="$(extract_mf6_model_nam_from_mfsim "$SIM_DIR/mfsim.nam" || true)"
-if [[ -n "$model_nam_rel" && -f "$SIM_DIR/$model_nam_rel" ]]; then
-  expected_wel="$(extract_expected_pkg_file "$SIM_DIR/$model_nam_rel" "^WEL" || true)"
-  expected_rch="$(extract_expected_pkg_file "$SIM_DIR/$model_nam_rel" "^(RCH|RCHA)" || true)"
-else
-  expected_wel=""
-  expected_rch=""
-fi
-
-if [[ -f "$RUN_ROOT/override_wel.pkg" ]]; then
-  wel_target="${expected_wel:-gma14.wel}"
-  log "Applying uploaded WEL override as $wel_target"
-  cp -f "$RUN_ROOT/override_wel.pkg" "$SIM_DIR/$wel_target"
-fi
-if [[ -f "$RUN_ROOT/override_rch.pkg" ]]; then
-  rch_target="${expected_rch:-gma14_rch_oc.rcha}"
-  log "Applying uploaded RCH override as $rch_target"
-  cp -f "$RUN_ROOT/override_rch.pkg" "$SIM_DIR/$rch_target"
-fi
-
-python modflow.py "$SIM_DIR/mfsim.nam"
-
-log "Copying simulation results to $OUTPUTS_DIR"
-cp -a "$SIM_DIR/." "$OUTPUTS_DIR/"
-
-log "MODFLOW 6 run completed"
+main "$@"

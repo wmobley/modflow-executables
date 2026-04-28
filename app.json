@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.905bb64",
+  "version": "0.0.fb606ee",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-905bb64",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-fb606ee",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -30,7 +30,17 @@
     "mpiCmd": null,
     "cmdPrefix": "mkdir $PWD/work $PWD/home $PWD/scratch;",
     "parameterSet": {
-      "appArgs": [],
+      "appArgs": [
+        {
+          "arg": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/twdb_gam_collection/Carrizo-Wilcox_Aquifer_central_portion_GAM_version_3.02/Model_File/czwx_c_qcsp_v3.02_model_files/czwx_c_qcsp_v3.02_model_files/GMA12_Modified_MODFLOW/Modified_GAM/gwv-modflow-usg-Modified",
+          "name": "mf6DefaultDir",
+          "description": "Default baseline MF6 input directory used when files are not present in uploaded inputs.",
+          "inputMode": "FIXED",
+          "notes": {
+            "isHidden": true
+          }
+        }
+      ],
       "schedulerOptions": [
         {
           "name": "TACC Scheduler Profile",
@@ -51,29 +61,7 @@
           }
         }
       ],
-      "envVariables": [
-        {
-          "key": "MF6_NAM_URL",
-          "value": "__REQUIRED_NAM_URL__",
-          "description": "Direct CKAN download URL for the MF6 simulation name file (typically mfsim.nam).",
-          "inputMode": "REQUIRED",
-          "notes": {}
-        },
-        {
-          "key": "MF6_WEL_URL",
-          "value": "__NONE__",
-          "description": "Direct CKAN download URL for the replacement WEL package file. May come from a different dataset.",
-          "inputMode": "REQUIRED",
-          "notes": {}
-        },
-        {
-          "key": "MF6_RCH_URL",
-          "value": "__NONE__",
-          "description": "Direct CKAN download URL for the replacement RCH/RCHA package file. May come from a different dataset.",
-          "inputMode": "REQUIRED",
-          "notes": {}
-        }
-      ],
+      "envVariables": [],
       "archiveFilter": {
         "includes": [],
         "excludes": [],
@@ -82,36 +70,172 @@
     },
     "fileInputs": [
       {
-        "name": "gma14-wel",
-        "description": "WEL6 package file",
+        "name": "mf6-simulation-archive",
+        "description": "Optional ZIP archive containing a MODFLOW 6 simulation or supporting files such as array data.",
         "inputMode": "OPTIONAL",
         "autoMountLocal": true,
-        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14/gma14.wel",
-        "targetPath": "gma14.wel"
+        "sourceUrl": null,
+        "targetPath": "simulation.zip"
       },
       {
-        "name": "gma14-rch-oc",
-        "description": "RCH6 OC recharge package file",
+        "name": "mf6-sim-nam",
+        "description": "Optional simulation name file. If omitted, the app will generate mfsim.nam from the staged MF6 inputs.",
         "inputMode": "OPTIONAL",
         "autoMountLocal": true,
-        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14/gma14_rch_oc.rcha",
-        "targetPath": "gma14_rch_oc.rcha"
+        "sourceUrl": null,
+        "targetPath": "provided/mfsim.nam"
       },
       {
-        "name": "gma14-rch-sc",
-        "description": "RCH6 SC recharge package file",
+        "name": "mf6-model-nam",
+        "description": "Optional groundwater flow model name file. If omitted, the app will generate one from the staged package inputs.",
         "inputMode": "OPTIONAL",
         "autoMountLocal": true,
-        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14/gma14_rch_sc.rcha",
-        "targetPath": "gma14_rch_sc.rcha"
+        "sourceUrl": null,
+        "targetPath": "provided/model.nam"
       },
       {
-        "name": "gma14-default-dir",
-        "description": "Default GMA14 input directory (all non-interactive files).",
-        "inputMode": "REQUIRED",
+        "name": "mf6-tdis",
+        "description": "Optional TDIS file.",
+        "inputMode": "OPTIONAL",
         "autoMountLocal": true,
-        "sourceUrl": "tapis://ptdatax.project.PTDATAX-272/twdb_gam_collection/Gulf_Coast_Aquifer_System_northern_portion_GAM_version_4.1/glfc_n_v4_tacc/gma14",
-        "targetPath": "default_data"
+        "sourceUrl": null,
+        "targetPath": "provided/simulation.tdis"
+      },
+      {
+        "name": "mf6-ims",
+        "description": "Optional IMS solver file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/simulation.ims"
+      },
+      {
+        "name": "mf6-dis",
+        "description": "Optional DIS package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.dis"
+      },
+      {
+        "name": "mf6-disv",
+        "description": "Optional DISV package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.disv"
+      },
+      {
+        "name": "mf6-disu",
+        "description": "Optional DISU package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.disu"
+      },
+      {
+        "name": "mf6-ic",
+        "description": "Optional initial conditions file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.ic"
+      },
+      {
+        "name": "mf6-npf",
+        "description": "Optional NPF package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.npf"
+      },
+      {
+        "name": "mf6-sto",
+        "description": "Optional STO package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.sto"
+      },
+      {
+        "name": "mf6-oc",
+        "description": "Optional output control file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.oc"
+      },
+      {
+        "name": "mf6-wel",
+        "description": "Optional WEL package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.wel"
+      },
+      {
+        "name": "mf6-rch",
+        "description": "Optional RCH package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.rch"
+      },
+      {
+        "name": "mf6-rcha",
+        "description": "Optional RCHA package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.rcha"
+      },
+      {
+        "name": "mf6-drn",
+        "description": "Optional DRN package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.drn"
+      },
+      {
+        "name": "mf6-riv",
+        "description": "Optional RIV package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.riv"
+      },
+      {
+        "name": "mf6-ghb",
+        "description": "Optional GHB package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.ghb"
+      },
+      {
+        "name": "mf6-chd",
+        "description": "Optional CHD package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.chd"
+      },
+      {
+        "name": "mf6-csub",
+        "description": "Optional CSUB package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.csub"
+      },
+      {
+        "name": "mf6-obs",
+        "description": "Optional observations package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.obs"
       }
     ],
     "fileInputArrays": [],
@@ -128,7 +252,7 @@
   "notes": {
     "label": "MODFLOW 6",
     "helpUrl": "https://www.simonwenkel.com/notes/geo/software/modflow/compiling-modflow-on-linux.html",
-    "helpText": "Provide a CKAN URL to an MF6 name file (mfsim.nam), plus optional CKAN URLs for replacement WEL and RCH files. The app will pull the remaining files from the NAM file dataset and run MF6.",
+    "helpText": "Provide either a simulation ZIP or any subset of MF6 input files. The launch script stages those files under provided/, fills missing files from the configured baseline directory, and generates mfsim.nam and a model name file when they are not supplied.",
     "hideNodeCountAndCoresPerNode": true,
     "isInteractive": false,
     "icon": "jupyter",
