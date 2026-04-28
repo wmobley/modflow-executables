@@ -1,0 +1,218 @@
+{
+  "id": "modflow-usg-simulation",
+  "version": "0.0.1",
+  "description": "Run a MODFLOW-USG simulation on TACC using a cookbook-style Tapis application.",
+  "owner": "${apiUserId}",
+  "enabled": true,
+  "runtime": "SINGULARITY",
+  "runtimeVersion": null,
+  "runtimeOptions": [
+    "SINGULARITY_RUN"
+  ],
+  "containerImage": "docker://ghcr.io/wmobley/modflow-usg:0.0.1",
+  "jobType": "BATCH",
+  "maxJobs": -1,
+  "maxJobsPerUser": -1,
+  "strictFileInputs": false,
+  "jobAttributes": {
+    "description": null,
+    "dynamicExecSystem": false,
+    "execSystemConstraints": null,
+    "execSystemId": "ls6",
+    "execSystemExecDir": "${JobWorkingDir}",
+    "execSystemInputDir": "${JobWorkingDir}",
+    "execSystemOutputDir": "${JobWorkingDir}/output",
+    "execSystemLogicalQueue": "vm-small",
+    "archiveSystemId": "cloud.data",
+    "archiveSystemDir": "HOST_EVAL($HOME)/tapis-jobs-archive/${JobCreateDate}/${JobName}-${JobUUID}",
+    "archiveOnAppError": true,
+    "isMpi": false,
+    "mpiCmd": null,
+    "cmdPrefix": "mkdir $PWD/work $PWD/home $PWD/scratch;",
+    "parameterSet": {
+      "appArgs": [
+        {
+          "arg": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/Carrizo-Wilcox-central/gmv-modflow-usg-Modified",
+          "name": "mfusgDefaultDir",
+          "description": "Default baseline MODFLOW-USG input directory used when files are not present in uploaded inputs.",
+          "inputMode": "FIXED",
+          "notes": {
+            "isHidden": true
+          }
+        }
+      ],
+      "schedulerOptions": [
+        {
+          "name": "TACC Scheduler Profile",
+          "description": "Scheduler profile for HPC clusters at TACC",
+          "inputMode": "FIXED",
+          "arg": "--tapis-profile tacc-apptainer",
+          "notes": {
+            "isHidden": true
+          }
+        },
+        {
+          "name": "TAP Session Substring",
+          "description": "TAP Functions require the substring 'tap_' and in the slurm job name in order to function.",
+          "inputMode": "FIXED",
+          "arg": "--job-name ${JobName}-tap_",
+          "notes": {
+            "isHidden": true
+          }
+        }
+      ],
+      "envVariables": [],
+      "archiveFilter": {
+        "includes": [],
+        "excludes": [],
+        "includeLaunchFiles": true
+      }
+    },
+    "fileInputs": [
+      {
+        "name": "mfusg-simulation-archive",
+        "description": "Optional ZIP archive containing a MODFLOW-USG simulation or supporting files such as reference arrays.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "simulation.zip"
+      },
+      {
+        "name": "mfusg-nam",
+        "description": "Optional MODFLOW-USG name file. If omitted, the app will resolve the best available *.nam file from staged inputs.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.nam"
+      },
+      {
+        "name": "mfusg-bas",
+        "description": "Optional BAS package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.bas"
+      },
+      {
+        "name": "mfusg-dis",
+        "description": "Optional DIS package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.dis"
+      },
+      {
+        "name": "mfusg-drn",
+        "description": "Optional DRN package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.drn"
+      },
+      {
+        "name": "mfusg-evt",
+        "description": "Optional EVT package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.evt"
+      },
+      {
+        "name": "mfusg-ghb",
+        "description": "Optional GHB package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.ghb"
+      },
+      {
+        "name": "mfusg-gnc",
+        "description": "Optional GNC package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.gnc"
+      },
+      {
+        "name": "mfusg-hfb",
+        "description": "Optional HFB package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.hfb"
+      },
+      {
+        "name": "mfusg-lpf",
+        "description": "Optional LPF package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.lpf"
+      },
+      {
+        "name": "mfusg-oc",
+        "description": "Optional output control file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.oc"
+      },
+      {
+        "name": "mfusg-rch",
+        "description": "Optional RCH package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.rch"
+      },
+      {
+        "name": "mfusg-riv",
+        "description": "Optional RIV package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.riv"
+      },
+      {
+        "name": "mfusg-sms",
+        "description": "Optional SMS solver file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.sms"
+      },
+      {
+        "name": "mfusg-wel",
+        "description": "Optional WEL package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.wel"
+      }
+    ],
+    "fileInputArrays": [],
+    "nodeCount": 1,
+    "coresPerNode": 1,
+    "memoryMB": 1000,
+    "maxMinutes": 60,
+    "subscriptions": [],
+    "tags": []
+  },
+  "tags": [
+    "portalName: ALL"
+  ],
+  "notes": {
+    "label": "MODFLOW-USG",
+    "helpUrl": "https://github.com/In-For-Disaster-Analytics/Cookbook-Docker-Template",
+    "helpText": "Provide either a simulation ZIP or any subset of MODFLOW-USG input files. The launch script stages those files under provided/, fills missing files from the configured baseline directory, resolves the best available *.nam file, and runs MODFLOW-USG.",
+    "hideNodeCountAndCoresPerNode": true,
+    "isInteractive": false,
+    "icon": "jupyter",
+    "category": "Data Processing",
+    "queueFilter": [
+      "vm-small",
+      "development",
+      "normal"
+    ]
+  }
+}
