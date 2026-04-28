@@ -31,3 +31,5 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/osx
 
+__pycache__/modflow.cpython-314.pyc
+__pycache__/resolve_sim_nam.cpython-314.pyc
