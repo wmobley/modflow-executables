@@ -1,6 +1,6 @@
 # MODFLOW-96 App
 
-This folder is reserved for the Tapis app that will run legacy MODFLOW-96-style models.
+This folder contains the Tapis app that runs legacy MODFLOW-96-style models.
 
 Current target models:
 - `Trinity_hill_country/Trinity_hill_country_model_only/modfl_96/ststate`
@@ -11,11 +11,11 @@ Why this is separate from newer MODFLOW apps:
 - The model entrypoints and executable requirements are engine-specific.
 - Legacy naming and package conventions make direct reuse of the `modflow6` app inappropriate.
 
-Planned contents:
+Contents:
 - `app.json` for the MODFLOW-96 Tapis app
-- `Dockerfile` that installs or bundles the required legacy executable
-- `run.sh` that stages the target directory and launches the legacy `*.nam` file
+- `Dockerfile` that builds MODFLOW-96 from the official USGS source archive
+- `run.sh` that stages inputs, generates or resolves the legacy `*.nam` file, and launches the model
 
 Implementation notes:
 - `trnt_h_ss.nam` appears in multiple legacy layouts and should be resolved relative to the selected run directory.
-- This app will likely require the most engine-specific handling of the group.
+- The Docker image installs the compiled MODFLOW-96 executable as `mf96`.
