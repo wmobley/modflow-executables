@@ -126,6 +126,14 @@ function log() {
 	printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
 }
 
+function copy_tree_contents() {
+	local source_dir="$1"
+	local target_dir="$2"
+
+	mkdir -p "$target_dir"
+	cp -RL "$source_dir/." "$target_dir/"
+}
+
 INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
 RUN_ROOT="$PWD/run"
@@ -180,7 +188,7 @@ function stage_default_data_dir() {
 	fi
 	mkdir -p "$DEFAULT_STAGE_DIR"
 	log "Staging baseline MF6 files from $DEFAULT_DATA_DIR into $DEFAULT_STAGE_DIR"
-	cp -a "$DEFAULT_DATA_DIR/." "$DEFAULT_STAGE_DIR/"
+	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
 }
 
 # Stage the uploaded inputs into a clean working directory and expand ZIP files
@@ -194,7 +202,7 @@ function stage_user_inputs() {
 
 	if [[ -d "$INPUTS_DIR" ]]; then
 		log "Copying staged inputs from $INPUTS_DIR into $RUN_ROOT"
-		cp -a "$INPUTS_DIR/." "$RUN_ROOT/" 2>/dev/null || true
+		copy_tree_contents "$INPUTS_DIR" "$RUN_ROOT" 2>/dev/null || true
 	fi
 
 	if [[ -f "$sim_archive" ]]; then
@@ -256,7 +264,7 @@ function run_modflow_simulation() {
 # are available in the archived Tapis job results.
 function archive_results() {
 	log "Copying simulation results to $OUTPUTS_DIR"
-	cp -a "$RUN_ROOT/." "$OUTPUTS_DIR/"
+	copy_tree_contents "$RUN_ROOT" "$OUTPUTS_DIR"
 }
 
 function main() {

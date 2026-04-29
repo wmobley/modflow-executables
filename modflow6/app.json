@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.d6f4151",
+  "version": "0.0.e66b231",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-d6f4151",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-e66b231",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -56,6 +56,15 @@
           "description": "TAP Functions require the substring 'tap_' and in the slurm job name in order to function.",
           "inputMode": "FIXED",
           "arg": "--job-name ${JobName}-tap_",
+          "notes": {
+            "isHidden": true
+          }
+        },
+        {
+          "name": "TACC Allocation",
+          "description": "TACC allocation charged for MODFLOW jobs.",
+          "inputMode": "FIXED",
+          "arg": "-A PT2050-DataX",
           "notes": {
             "isHidden": true
           }
