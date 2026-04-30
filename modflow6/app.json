@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.3335c94",
+  "version": "0.0.a780102",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-3335c94",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-a780102",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -32,7 +32,7 @@
     "parameterSet": {
       "appArgs": [
         {
-          "arg": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/twdb_gam_collection/Carrizo-Wilcox_Aquifer_central_portion_GAM_version_3.02/Model_File/czwx_c_qcsp_v3.02_model_files/czwx_c_qcsp_v3.02_model_files/GMA12_Modified_MODFLOW/Modified_GAM/gwv-modflow-usg-Modified",
+          "arg": "__NONE__",
           "name": "mf6DefaultDir",
           "description": "Default baseline MF6 input directory used when files are not present in uploaded inputs.",
           "inputMode": "FIXED",
@@ -245,6 +245,118 @@
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "provided/model.obs"
+      },
+      {
+        "name": "mf6-rcha-02",
+        "description": "Optional second RCHA package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model-02.rcha"
+      },
+      {
+        "name": "mf6-rcha-03",
+        "description": "Optional third RCHA package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model-03.rcha"
+      },
+      {
+        "name": "mf6-obs-02",
+        "description": "Optional second observations package or utility file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model-02.obs"
+      },
+      {
+        "name": "mf6-obs-03",
+        "description": "Optional third observations package or utility file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model-03.obs"
+      },
+      {
+        "name": "mf6-support-01",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (01).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-01"
+      },
+      {
+        "name": "mf6-support-02",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (02).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-02"
+      },
+      {
+        "name": "mf6-support-03",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (03).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-03"
+      },
+      {
+        "name": "mf6-support-04",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (04).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-04"
+      },
+      {
+        "name": "mf6-support-05",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (05).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-05"
+      },
+      {
+        "name": "mf6-support-06",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (06).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-06"
+      },
+      {
+        "name": "mf6-support-07",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (07).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-07"
+      },
+      {
+        "name": "mf6-support-08",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (08).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-08"
+      },
+      {
+        "name": "mf6-support-09",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (09).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-09"
+      },
+      {
+        "name": "mf6-support-10",
+        "description": "Optional MODFLOW 6 support file or directory staged at the simulation root (10).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-10"
       }
     ],
     "fileInputArrays": [],
