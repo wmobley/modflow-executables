@@ -63,6 +63,22 @@ function resolve_default_data_dir() {
 	fi
 }
 
+function flatten_support_inputs() {
+	local support_dir="$RUN_ROOT/support"
+	local support_item
+
+	if [[ ! -d "$support_dir" ]]; then
+		return
+	fi
+
+	shopt -s nullglob dotglob
+	for support_item in "$support_dir"/*; do
+		mv "$support_item" "$RUN_ROOT/"
+	done
+	shopt -u nullglob dotglob
+	rmdir "$support_dir" 2>/dev/null || true
+}
+
 function stage_default_data_dir() {
 	if [[ -z "$DEFAULT_DATA_DIR" ]]; then
 		return
@@ -114,6 +130,7 @@ function resolve_sim_nam_path() {
 function prepare_run() {
 	mkdir -p "$OUTPUTS_DIR"
 	stage_user_inputs
+	flatten_support_inputs
 	resolve_default_data_dir
 	stage_default_data_dir
 }
