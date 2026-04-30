@@ -31,12 +31,16 @@ def main() -> int:
     os.chdir(nam_path.parent)
 
     exe = os.environ.get("MF96_EXE", "mf96")
-    extra_args = sys.argv[2:] if len(sys.argv) > 1 else []
-    cmd = [exe, nam_path.name, *extra_args]
+    cmd = [exe]
 
     print(f"Running MODFLOW-96 in {nam_path.parent} using {nam_path.name}")
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(
+            cmd,
+            check=True,
+            input=f"{nam_path.name}\n",
+            text=True,
+        )
     except FileNotFoundError:
         print(f"MODFLOW-96 executable not found: {exe}", file=sys.stderr)
         return 1
