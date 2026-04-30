@@ -103,6 +103,8 @@ function stage_default_data_dir() {
 	if [[ -z "$DEFAULT_DATA_DIR" ]]; then
 		return
 	fi
+	log "Overlaying baseline files from $DEFAULT_DATA_DIR into $RUN_ROOT"
+	copy_tree_contents "$DEFAULT_DATA_DIR" "$RUN_ROOT"
 	mkdir -p "$DEFAULT_STAGE_DIR"
 	log "Staging baseline MF6 files from $DEFAULT_DATA_DIR into $DEFAULT_STAGE_DIR"
 	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
@@ -158,9 +160,10 @@ function log_staged_inputs() {
 function prepare_run() {
 	mkdir -p "$OUTPUTS_DIR"
 	stage_user_inputs
-	flatten_support_inputs
 	resolve_default_data_dir
 	stage_default_data_dir
+	copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
+	flatten_support_inputs
 }
 
 function run_modflow_simulation() {

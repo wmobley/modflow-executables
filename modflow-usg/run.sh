@@ -103,6 +103,8 @@ function stage_default_data_dir() {
 	if [[ -z "$DEFAULT_DATA_DIR" ]]; then
 		return
 	fi
+	log "Overlaying baseline files from $DEFAULT_DATA_DIR into $RUN_ROOT"
+	copy_tree_contents "$DEFAULT_DATA_DIR" "$RUN_ROOT"
 	mkdir -p "$DEFAULT_STAGE_DIR"
 	log "Staging baseline MODFLOW-USG files from $DEFAULT_DATA_DIR into $DEFAULT_STAGE_DIR"
 	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
@@ -111,6 +113,7 @@ function stage_default_data_dir() {
 function stage_user_inputs() {
 	local sim_archive="$INPUTS_DIR/simulation.zip"
 	local archive
+	local archives=()
 
 	rm -rf "$RUN_ROOT"
 	mkdir -p "$RUN_ROOT"
@@ -125,15 +128,17 @@ function stage_user_inputs() {
 		unzip -q "$sim_archive" -d "$RUN_ROOT"
 	else
 		shopt -s nullglob
-		local archives=("$INPUTS_DIR"/*.zip)
+		archives=("$INPUTS_DIR"/*.zip)
 		shopt -u nullglob
-		for archive in "${archives[@]}"; do
-			if [[ "$archive" == "$sim_archive" ]]; then
-				continue
-			fi
-			log "Unpacking $(basename "$archive") into $RUN_ROOT"
-			unzip -q "$archive" -d "$RUN_ROOT"
-		done
+		if ((${#archives[@]} > 0)); then
+			for archive in "${archives[@]}"; do
+				if [[ "$archive" == "$sim_archive" ]]; then
+					continue
+				fi
+				log "Unpacking $(basename "$archive") into $RUN_ROOT"
+				unzip -q "$archive" -d "$RUN_ROOT"
+			done
+		fi
 	fi
 }
 
@@ -150,9 +155,10 @@ function resolve_sim_nam_path() {
 function prepare_run() {
 	mkdir -p "$OUTPUTS_DIR"
 	stage_user_inputs
-	flatten_support_inputs
 	resolve_default_data_dir
 	stage_default_data_dir
+	copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
+	flatten_support_inputs
 }
 
 function run_modflow_simulation() {
