@@ -1,6 +1,6 @@
 {
   "id": "modflow-2000-simulation",
-  "version": "0.0.3335c94",
+  "version": "0.0.a780102",
   "description": "Run a MODFLOW-2000 simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-2000:sha-3335c94",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-2000:sha-a780102",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -181,6 +181,86 @@
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "provided/model.wel"
+      },
+      {
+        "name": "mf2000-support-01",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (01).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-01"
+      },
+      {
+        "name": "mf2000-support-02",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (02).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-02"
+      },
+      {
+        "name": "mf2000-support-03",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (03).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-03"
+      },
+      {
+        "name": "mf2000-support-04",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (04).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-04"
+      },
+      {
+        "name": "mf2000-support-05",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (05).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-05"
+      },
+      {
+        "name": "mf2000-support-06",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (06).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-06"
+      },
+      {
+        "name": "mf2000-support-07",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (07).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-07"
+      },
+      {
+        "name": "mf2000-support-08",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (08).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-08"
+      },
+      {
+        "name": "mf2000-support-09",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (09).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-09"
+      },
+      {
+        "name": "mf2000-support-10",
+        "description": "Optional MODFLOW-2000 support file or directory staged at the model root (10).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-10"
       }
     ],
     "fileInputArrays": [],
