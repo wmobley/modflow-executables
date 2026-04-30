@@ -145,7 +145,9 @@ def write_generated_sim_nam(
     tdis_path: Path,
     ims_path: Path,
 ) -> Path:
-    model_name = model_nam_path.stem.replace(".generated", "").replace(".nam", "") or "model"
+    model_name = model_nam_path.stem.replace(".", "_") or "model"
+    if model_name == "generated_model":
+        model_name = "model"
     generated_sim = run_root / "mfsim.nam"
     generated_sim.write_text(
         "\n".join(
