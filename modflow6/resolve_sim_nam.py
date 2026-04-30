@@ -192,6 +192,8 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
 
     package_files: dict[str, list[Path]] = defaultdict(list)
     for path in files:
+        if path.name.lower().endswith(".csub.obs"):
+            continue
         pkg = PACKAGE_MAP.get(path.suffix.lower())
         if pkg:
             package_files[pkg].append(path)
@@ -200,7 +202,7 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
     has_user_support_files = any(path in user_files for path in [*tdis_files, *ims_files])
 
     explicit_user_sim = first_match(user_sim_nams, provided_root, default_root)
-    if explicit_user_sim is not None:
+    if explicit_user_sim is not None and not has_user_packages and not has_user_support_files:
         return explicit_user_sim
 
     existing_sim = first_match(sim_nams, provided_root, default_root)
@@ -208,7 +210,7 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
         model_nams, provided_root, default_root
     )
 
-    need_generated_model = selected_model_nam is None or (has_user_packages and not user_model_nams)
+    need_generated_model = selected_model_nam is None or has_user_packages
     if need_generated_model:
         selected_model_nam = write_generated_model_nam(
             run_root,

@@ -1,6 +1,6 @@
 {
   "id": "modflow-96-simulation",
-  "version": "0.0.a780102",
+  "version": "0.0.75c598f",
   "description": "Run a MODFLOW-96 simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-96:sha-a780102",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-96:sha-75c598f",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -261,6 +261,38 @@
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "support/support-10"
+      },
+      {
+        "name": "mf96-budget",
+        "description": "Optional binary budget output/control file used by legacy MF96 name files.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "budget.dat"
+      },
+      {
+        "name": "mf96-heads",
+        "description": "Optional binary heads output/control file used by legacy MF96 name files.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "heads.dat"
+      },
+      {
+        "name": "mf96-ddown",
+        "description": "Optional binary drawdown output/control file used by legacy MF96 name files.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "ddown.dat"
+      },
+      {
+        "name": "mf96-mt3d-flo",
+        "description": "Optional MT3D flow support file used by legacy MF96 name files.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "mt3d.flo"
       }
     ],
     "fileInputArrays": [],

@@ -35,7 +35,7 @@ PREFERRED_NAME_FILES = (
 
 PACKAGE_CONFIG = {
     "bas": {"tokens": ("BAS6", "BAS"), "path_keys": ("model.bas", ".bas"), "fallback_unit": "1"},
-    "dis": {"tokens": ("DIS",), "path_keys": ("model.dis", ".dis"), "fallback_unit": "11"},
+    "dis": {"tokens": ("DISU", "DIS"), "path_keys": ("model.dis", ".dis"), "fallback_unit": "11"},
     "drn": {"tokens": ("DRN",), "path_keys": ("model.drn", ".drn"), "fallback_unit": "21"},
     "evt": {"tokens": ("EVT",), "path_keys": ("model.evt", ".evt"), "fallback_unit": "22"},
     "ghb": {"tokens": ("GHB",), "path_keys": ("model.ghb", ".ghb"), "fallback_unit": "23"},

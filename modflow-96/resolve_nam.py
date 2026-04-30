@@ -35,7 +35,7 @@ PREFERRED_NAME_FILES = (
 PACKAGE_CONFIG = {
     "bas": {"tokens": ("BAS", "BAS6"), "path_keys": ("bas.dat",), "fallback_unit": "1"},
     "bcf": {"tokens": ("BCF", "BCF6"), "path_keys": ("bcf.dat",), "fallback_unit": "15"},
-    "discret": {"tokens": ("DIS", "DISCRET"), "path_keys": ("discret.dat",), "fallback_unit": "11"},
+    "discret": {"tokens": ("DATA", "DISCRET"), "path_keys": ("discret.dat",), "fallback_unit": "2"},
     "drn": {"tokens": ("DRN",), "path_keys": ("drn.dat",), "fallback_unit": "21"},
     "ghb": {"tokens": ("GHB",), "path_keys": ("ghb.dat",), "fallback_unit": "23"},
     "oc": {"tokens": ("OC",), "path_keys": ("oc.dat",), "fallback_unit": "14"},
@@ -44,6 +44,10 @@ PACKAGE_CONFIG = {
     "riv": {"tokens": ("RIV",), "path_keys": ("riv.dat",), "fallback_unit": "18"},
     "sor": {"tokens": ("SOR",), "path_keys": ("sor.dat",), "fallback_unit": "26"},
     "wel": {"tokens": ("WEL",), "path_keys": ("wel.dat",), "fallback_unit": "20"},
+    "budget": {"tokens": ("DATA(BINARY)",), "path_keys": ("budget.dat",), "fallback_unit": "50"},
+    "heads": {"tokens": ("DATA(BINARY)",), "path_keys": ("heads.dat",), "fallback_unit": "51"},
+    "ddown": {"tokens": ("DATA(BINARY)",), "path_keys": ("ddown.dat",), "fallback_unit": "52"},
+    "mt3d_flo": {"tokens": ("DATA(BINARY)",), "path_keys": ("mt3d.flo",), "fallback_unit": "32"},
 }
 
 

@@ -42,6 +42,7 @@ PACKAGE_CONFIG = {
     "gmg": {"tokens": ("GMG",), "path_keys": ("model.gmg", ".gmg"), "fallback_unit": "27"},
     "oc": {"tokens": ("OC",), "path_keys": ("model.oc", ".oc"), "fallback_unit": "14"},
     "rch": {"tokens": ("RCH",), "path_keys": ("model.rch", ".rch"), "fallback_unit": "19"},
+    "res": {"tokens": ("RES",), "path_keys": ("model.res", ".res"), "fallback_unit": "14"},
     "str": {"tokens": ("STR",), "path_keys": ("model.str", ".str"), "fallback_unit": "24"},
     "wel": {"tokens": ("WEL",), "path_keys": ("model.wel", ".wel"), "fallback_unit": "20"},
 }

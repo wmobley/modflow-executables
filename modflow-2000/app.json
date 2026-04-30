@@ -1,6 +1,6 @@
 {
   "id": "modflow-2000-simulation",
-  "version": "0.0.a780102",
+  "version": "0.0.75c598f",
   "description": "Run a MODFLOW-2000 simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-2000:sha-a780102",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-2000:sha-75c598f",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -165,6 +165,14 @@
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "provided/model.rch"
+      },
+      {
+        "name": "mf2000-res",
+        "description": "Optional RES reservoir package file.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.res"
       },
       {
         "name": "mf2000-str",
