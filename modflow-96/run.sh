@@ -24,6 +24,26 @@ function copy_tree_contents() {
 	cp -RL "$source_dir/." "$target_dir/"
 }
 
+function copy_staged_inputs() {
+	local source_dir="$1"
+	local target_dir="$2"
+	local item
+	local item_name
+
+	mkdir -p "$target_dir"
+	shopt -s nullglob dotglob
+	for item in "$source_dir"/*; do
+		item_name="$(basename "$item")"
+		case "$item_name" in
+			run|output|work|home|scratch)
+				continue
+				;;
+		esac
+		cp -RL "$item" "$target_dir/"
+	done
+	shopt -u nullglob dotglob
+}
+
 # -----------------------------------------------------------------------------
 # Argument parsing and input staging.
 # -----------------------------------------------------------------------------
@@ -97,7 +117,7 @@ function stage_user_inputs() {
 
 	if [[ -d "$INPUTS_DIR" ]]; then
 		log "Copying staged inputs from $INPUTS_DIR into $RUN_ROOT"
-		copy_tree_contents "$INPUTS_DIR" "$RUN_ROOT" 2>/dev/null || true
+		copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
 	fi
 
 	if [[ -f "$sim_archive" ]]; then
