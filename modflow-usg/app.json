@@ -1,6 +1,6 @@
 {
   "id": "modflow-usg-simulation",
-  "version": "0.0.3335c94",
+  "version": "0.0.a780102",
   "description": "Run a MODFLOW-USG simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-usg:sha-3335c94",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-usg:sha-a780102",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -197,6 +197,86 @@
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "provided/model.wel"
+      },
+      {
+        "name": "mfusg-support-01",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (01).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-01"
+      },
+      {
+        "name": "mfusg-support-02",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (02).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-02"
+      },
+      {
+        "name": "mfusg-support-03",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (03).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-03"
+      },
+      {
+        "name": "mfusg-support-04",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (04).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-04"
+      },
+      {
+        "name": "mfusg-support-05",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (05).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-05"
+      },
+      {
+        "name": "mfusg-support-06",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (06).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-06"
+      },
+      {
+        "name": "mfusg-support-07",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (07).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-07"
+      },
+      {
+        "name": "mfusg-support-08",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (08).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-08"
+      },
+      {
+        "name": "mfusg-support-09",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (09).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-09"
+      },
+      {
+        "name": "mfusg-support-10",
+        "description": "Optional MODFLOW-USG support file or directory staged at the model root (10).",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "support/support-10"
       }
     ],
     "fileInputArrays": [],
