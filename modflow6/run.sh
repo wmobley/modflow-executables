@@ -136,6 +136,7 @@ function copy_tree_contents() {
 
 INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_ROOT="$PWD/run"
 DEFAULT_DATA_DIR=""
 DEFAULT_STAGE_DIR="$RUN_ROOT/default_data"
@@ -228,7 +229,7 @@ function stage_user_inputs() {
 # dedicated Python script so run.sh remains focused on orchestration.
 # -----------------------------------------------------------------------------
 function resolve_sim_nam_path() {
-	python3 resolve_sim_nam.py "$RUN_ROOT"
+	python3 "$SCRIPT_DIR/resolve_sim_nam.py" "$RUN_ROOT"
 }
 
 # -----------------------------------------------------------------------------
@@ -257,7 +258,7 @@ function run_modflow_simulation() {
 	sim_nam_path="$(resolve_sim_nam_path)"
 	log "Using simulation name file: $sim_nam_path"
 
-	python modflow.py "$sim_nam_path"
+	python "$SCRIPT_DIR/modflow.py" "$sim_nam_path"
 }
 
 # Persist the entire run directory so generated name files and model outputs
