@@ -112,6 +112,16 @@ function flatten_support_inputs() {
 	rm -rf "$support_dir"
 }
 
+function normalize_array_data_layout() {
+	local provided_array_dir="$RUN_ROOT/provided/array_data"
+	local root_array_dir="$RUN_ROOT/array_data"
+
+	if [[ -d "$provided_array_dir" && ! -e "$root_array_dir" ]]; then
+		cp -RL "$provided_array_dir" "$root_array_dir"
+		log "Promoted provided/array_data to array_data for MF6 external array resolution"
+	fi
+}
+
 function stage_default_data_dir() {
 	if [[ -z "$DEFAULT_DATA_DIR" ]]; then
 		return
@@ -167,6 +177,123 @@ function log_staged_inputs() {
 	find "$RUN_ROOT" -maxdepth 3 -mindepth 1 -print | sort | sed "s#^$RUN_ROOT/#  #"
 }
 
+function log_dir_status() {
+	local path="$1"
+	local label="$2"
+	local file_count
+
+	if [[ -d "$path" ]]; then
+		file_count="$(find "$path" -type f | wc -l | tr -d ' ')"
+		log "Setup check: $label exists ($path, files=$file_count)"
+	else
+		log "Setup check: $label missing ($path)"
+	fi
+}
+
+function log_file_status() {
+	local path="$1"
+	local label="$2"
+
+	if [[ -f "$path" ]]; then
+		log "Setup check: $label found ($path)"
+	else
+		log "Setup check: $label missing ($path)"
+	fi
+}
+
+function log_external_reference_checks() {
+	local package_file
+	local line
+	local token
+	local token_upper
+	local ref_path
+	local capture_next=0
+	local missing_count=0
+	local ref_tmp
+	local base_ref
+	local base_path
+
+	ref_tmp="$(mktemp)"
+
+	while IFS= read -r package_file; do
+		while IFS= read -r line; do
+			if [[ "$line" == "OPEN/CLOSE "* || "$line" == "FILEIN "* || "$line" == *" OPEN/CLOSE "* || "$line" == *" FILEIN "* ]]; then
+				capture_next=0
+				for token in $line; do
+					token_upper="$(printf '%s' "$token" | tr '[:lower:]' '[:upper:]')"
+					case "$token_upper" in
+						OPEN/CLOSE|FILEIN)
+							capture_next=1
+							continue
+							;;
+					esac
+					if ((capture_next == 1)); then
+						capture_next=0
+						ref_path="$token"
+						ref_path="${ref_path%\'}"
+						ref_path="${ref_path#\'}"
+						ref_path="${ref_path%\"}"
+						ref_path="${ref_path#\"}"
+						ref_path="${ref_path%,}"
+						ref_path="${ref_path%)}"
+						ref_path="${ref_path#(}"
+						if [[ "$ref_path" == *"="* ]]; then
+							ref_path="${ref_path#*=}"
+						fi
+						if [[ -n "$ref_path" ]]; then
+							echo "$package_file|$ref_path" >>"$ref_tmp"
+						fi
+					fi
+				done
+			fi
+		done <"$package_file"
+	done < <(find "$RUN_ROOT" -maxdepth 3 -type f \( -name "*.dis" -o -name "*.disv" -o -name "*.disu" -o -name "*.npf" -o -name "*.sto" -o -name "*.ic" -o -name "*.rcha" -o -name "*.rch" -o -name "*.wel" -o -name "*.drn" -o -name "*.riv" -o -name "*.ghb" -o -name "*.csub" -o -name "*.ims" -o -name "*.tdis" -o -name "*.nam" \) | sort)
+
+	if [[ ! -s "$ref_tmp" ]]; then
+		log "Setup check: no OPEN/CLOSE or FILEIN references detected in scanned package files"
+		rm -f "$ref_tmp"
+		return
+	fi
+
+	log "Setup check: validating referenced external paths from package files"
+	while IFS="|" read -r package_file ref_path; do
+		base_ref="$(basename "$ref_path")"
+		if [[ "$base_ref" == "REPLACE" || "$base_ref" == "BINARY" ]]; then
+			continue
+		fi
+		if [[ "$ref_path" == "REPLACE" || "$ref_path" == "BINARY" ]]; then
+			continue
+		fi
+
+		base_path="$(dirname "$package_file")/$ref_path"
+		if [[ -e "$RUN_ROOT/$ref_path" || -e "$base_path" ]]; then
+			continue
+		fi
+
+		missing_count=$((missing_count + 1))
+		log "Setup check: missing external ref [$ref_path] (referenced by ${package_file#$RUN_ROOT/})"
+	done < <(sort -u "$ref_tmp")
+
+	if ((missing_count == 0)); then
+		log "Setup check: all detected external references resolved"
+	else
+		log "Setup check: unresolved external references count=$missing_count"
+	fi
+
+	rm -f "$ref_tmp"
+}
+
+function log_setup_diagnostics() {
+	log "Running MF6 setup diagnostics"
+	log "Setup context: RUN_ROOT=$RUN_ROOT INPUTS_DIR=$INPUTS_DIR DEFAULT_DATA_DIR=${DEFAULT_DATA_DIR:-__NONE__}"
+	log_dir_status "$RUN_ROOT/provided" "provided input directory"
+	log_dir_status "$RUN_ROOT/array_data" "array_data directory"
+	log_dir_status "$RUN_ROOT/default_data" "default_data directory"
+	log_file_status "$RUN_ROOT/array_data/delr.txt" "array_data/delr.txt"
+	log_file_status "$RUN_ROOT/array_data/delc.txt" "array_data/delc.txt"
+	log_external_reference_checks
+}
+
 # -----------------------------------------------------------------------------
 # High-level workflow helpers.
 # -----------------------------------------------------------------------------
@@ -177,12 +304,14 @@ function prepare_run() {
 	stage_default_data_dir
 	copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
 	flatten_support_inputs
+	normalize_array_data_layout
 }
 
 function run_modflow_simulation() {
 	local sim_nam_path
 
 	log_staged_inputs
+	log_setup_diagnostics
 	log "Resolving MODFLOW 6 simulation name file from staged inputs"
 	sim_nam_path="$(resolve_sim_nam_path)"
 	log "Using simulation name file: $sim_nam_path"
