@@ -86,6 +86,7 @@ function resolve_default_data_dir() {
 function flatten_support_inputs() {
 	local support_dir="$RUN_ROOT/support"
 	local support_item
+	local staged_item
 
 	if [[ ! -d "$support_dir" ]]; then
 		return
@@ -93,10 +94,22 @@ function flatten_support_inputs() {
 
 	shopt -s nullglob dotglob
 	for support_item in "$support_dir"/*; do
-		mv "$support_item" "$RUN_ROOT/"
+		if [[ -d "$support_item" ]]; then
+			for staged_item in "$support_item"/*; do
+				cp -RL "$staged_item" "$RUN_ROOT/"
+			done
+		else
+			cp -RL "$support_item" "$RUN_ROOT/"
+		fi
 	done
 	shopt -u nullglob dotglob
-	rmdir "$support_dir" 2>/dev/null || true
+	if [[ ! -e "$RUN_ROOT/array_data" && -f "$RUN_ROOT/delr.txt" && -f "$RUN_ROOT/delc.txt" ]]; then
+		mkdir -p "$RUN_ROOT/array_data"
+		cp -RL "$RUN_ROOT/delr.txt" "$RUN_ROOT/array_data/delr.txt"
+		cp -RL "$RUN_ROOT/delc.txt" "$RUN_ROOT/array_data/delc.txt"
+		log "Created array_data/ compatibility copies from staged delr.txt and delc.txt"
+	fi
+	rm -rf "$support_dir"
 }
 
 function stage_default_data_dir() {
