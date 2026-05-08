@@ -115,10 +115,29 @@ function flatten_support_inputs() {
 function normalize_array_data_layout() {
 	local provided_array_dir="$RUN_ROOT/provided/array_data"
 	local root_array_dir="$RUN_ROOT/array_data"
+	local root_txt
+	local target_txt
+	local copied_txt_count=0
 
 	if [[ -d "$provided_array_dir" && ! -e "$root_array_dir" ]]; then
 		cp -RL "$provided_array_dir" "$root_array_dir"
 		log "Promoted provided/array_data to array_data for MF6 external array resolution"
+	fi
+
+	if [[ -d "$root_array_dir" ]]; then
+		shopt -s nullglob
+		for root_txt in "$RUN_ROOT"/*.txt; do
+			target_txt="$root_array_dir/$(basename "$root_txt")"
+			if [[ -e "$target_txt" ]]; then
+				continue
+			fi
+			cp -RL "$root_txt" "$target_txt"
+			copied_txt_count=$((copied_txt_count + 1))
+		done
+		shopt -u nullglob
+		if ((copied_txt_count > 0)); then
+			log "Populated array_data with $copied_txt_count staged root-level .txt file(s) for MF6 path compatibility"
+		fi
 	fi
 }
 
@@ -209,6 +228,8 @@ function log_external_reference_checks() {
 	local ref_path
 	local capture_next=0
 	local missing_count=0
+	local missing_logged=0
+	local missing_log_limit=60
 	local ref_tmp
 	local base_ref
 	local base_path
@@ -240,6 +261,11 @@ function log_external_reference_checks() {
 						if [[ "$ref_path" == *"="* ]]; then
 							ref_path="${ref_path#*=}"
 						fi
+						ref_path="${ref_path//$'\r'/}"
+						ref_path="${ref_path%\'}"
+						ref_path="${ref_path#\'}"
+						ref_path="${ref_path%\"}"
+						ref_path="${ref_path#\"}"
 						if [[ -n "$ref_path" ]]; then
 							echo "$package_file|$ref_path" >>"$ref_tmp"
 						fi
@@ -271,12 +297,18 @@ function log_external_reference_checks() {
 		fi
 
 		missing_count=$((missing_count + 1))
-		log "Setup check: missing external ref [$ref_path] (referenced by ${package_file#$RUN_ROOT/})"
+		if ((missing_logged < missing_log_limit)); then
+			log "Setup check: missing external ref [$ref_path] (referenced by ${package_file#$RUN_ROOT/})"
+			missing_logged=$((missing_logged + 1))
+		fi
 	done < <(sort -u "$ref_tmp")
 
 	if ((missing_count == 0)); then
 		log "Setup check: all detected external references resolved"
 	else
+		if ((missing_count > missing_logged)); then
+			log "Setup check: additional missing refs not shown=$((missing_count - missing_logged))"
+		fi
 		log "Setup check: unresolved external references count=$missing_count"
 	fi
 
