@@ -141,6 +141,31 @@ function normalize_array_data_layout() {
 	fi
 }
 
+function normalize_support_slot_filenames() {
+	local slot_path
+	local expected_name
+
+	for slot_path in "$RUN_ROOT"/support-[0-9][0-9]; do
+		[[ -f "$slot_path" ]] || continue
+		case "$(basename "$slot_path")" in
+			support-02)
+				expected_name="$RUN_ROOT/gma14.irr"
+				;;
+			support-03)
+				expected_name="$RUN_ROOT/gma14.csub.obs"
+				;;
+			*)
+				expected_name=""
+				;;
+		esac
+
+		if [[ -n "$expected_name" && ! -e "$expected_name" ]]; then
+			cp -RL "$slot_path" "$expected_name"
+			log "Mapped $(basename "$slot_path") to $(basename "$expected_name") for MF6 support-file compatibility"
+		fi
+	done
+}
+
 function stage_default_data_dir() {
 	if [[ -z "$DEFAULT_DATA_DIR" ]]; then
 		return
@@ -336,6 +361,7 @@ function prepare_run() {
 	stage_default_data_dir
 	copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
 	flatten_support_inputs
+	normalize_support_slot_filenames
 	normalize_array_data_layout
 }
 
