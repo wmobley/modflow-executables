@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.e3fa18c",
+  "version": "0.0.ec7e281",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-e3fa18c",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-ec7e281",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -67,6 +67,16 @@
           "arg": "-A PT2050-DataX",
           "notes": {
             "isHidden": true
+          }
+        },
+        {
+          "name": "TACC Reservation",
+          "description": "Reservation input string",
+          "inputMode": "INCLUDE_ON_DEMAND",
+          "arg": null,
+          "notes": {
+            "isHidden": true,
+            "showReservation": true
           }
         }
       ],
@@ -382,6 +392,7 @@
       "vm-small",
       "development",
       "normal"
-    ]
+    ],
+    "showReservation": true
   }
 }

@@ -1,6 +1,6 @@
 {
   "id": "modflow-96-simulation",
-  "version": "0.0.e3fa18c",
+  "version": "0.0.ec7e281",
   "description": "Run a MODFLOW-96 simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-96:sha-e3fa18c",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-96:sha-ec7e281",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -67,6 +67,16 @@
           "arg": "-A PT2050-DataX",
           "notes": {
             "isHidden": true
+          }
+        },
+        {
+          "name": "TACC Reservation",
+          "description": "Reservation input string",
+          "inputMode": "INCLUDE_ON_DEMAND",
+          "arg": null,
+          "notes": {
+            "isHidden": true,
+            "showReservation": true
           }
         }
       ],
@@ -318,6 +328,7 @@
       "vm-small",
       "development",
       "normal"
-    ]
+    ],
+    "showReservation": true
   }
 }

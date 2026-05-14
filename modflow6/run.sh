@@ -351,6 +351,33 @@ function log_setup_diagnostics() {
 	log_external_reference_checks
 }
 
+function log_solver_failure_summary() {
+	local lst_file
+	local has_lst=0
+	local pattern='converg|failed|failure|diverg|maximum (outer|inner) iterations|did not converge|residual'
+
+	log "MF6 exited with a non-zero status; collecting solver diagnostics"
+
+	if [[ -f "$RUN_ROOT/mfsim.lst" ]]; then
+		log "Tail of mfsim.lst (last 80 lines):"
+		tail -n 80 "$RUN_ROOT/mfsim.lst" | sed 's/^/  /'
+	fi
+
+	shopt -s nullglob
+	for lst_file in "$RUN_ROOT"/*.lst "$RUN_ROOT"/provided/*.lst; do
+		has_lst=1
+		if grep -Einq "$pattern" "$lst_file"; then
+			log "Convergence-related lines from $(basename "$lst_file"):"
+			grep -Ein "$pattern" "$lst_file" | tail -n 40 | sed 's/^/  /'
+		fi
+	done
+	shopt -u nullglob
+
+	if ((has_lst == 0)); then
+		log "No .lst files were found to summarize solver diagnostics"
+	fi
+}
+
 # -----------------------------------------------------------------------------
 # High-level workflow helpers.
 # -----------------------------------------------------------------------------
@@ -367,6 +394,7 @@ function prepare_run() {
 
 function run_modflow_simulation() {
 	local sim_nam_path
+	local rc=0
 
 	log_staged_inputs
 	log_setup_diagnostics
@@ -374,7 +402,11 @@ function run_modflow_simulation() {
 	sim_nam_path="$(resolve_sim_nam_path)"
 	log "Using simulation name file: $sim_nam_path"
 
-	python3 "$SCRIPT_DIR/modflow.py" "$sim_nam_path"
+	python3 "$SCRIPT_DIR/modflow.py" "$sim_nam_path" || rc=$?
+	if ((rc != 0)); then
+		log_solver_failure_summary
+		return "$rc"
+	fi
 }
 
 function archive_results() {
