@@ -13,7 +13,7 @@ DEFAULT_DATA_DIR=""
 DEFAULT_STAGE_DIR="$RUN_ROOT/default_data"
 DEFAULT_DATA_DIR_ARG=""
 ARCHIVE_URL_ARG=""
-ARCHIVE_DOWNLOAD_MAX_BYTES=$((8 * 1024 * 1024 * 1024))  # 8 GiB, matches validate_zip.py cap
+ARCHIVE_DOWNLOAD_MAX_BYTES=$((8 * 1024 * 1024 * 1024))  # 8 GiB, matches validate_archive.py cap
 
 function log() {
 	printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -182,24 +182,52 @@ function stage_default_data_dir() {
 	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
 }
 
-function safe_unzip() {
-	local zip_path="$1"
+function safe_extract() {
+	local archive_path="$1"
 	local dest_dir="$2"
-	local label="${3:-$(basename "$zip_path")}"
+	local label="${3:-$(basename "$archive_path")}"
+	local stage_dir
+	local archive_format
 
 	log "Validating $label before extraction"
-	if ! python3 "$SCRIPT_DIR/validate_zip.py" "$zip_path"; then
-		log "ERROR: $label failed safety validation (unsafe path, symlink entry, or oversized archive); refusing to extract"
+	if ! archive_format="$(python3 "$SCRIPT_DIR/validate_archive.py" "$archive_path")"; then
+		log "ERROR: $label failed safety validation (unsafe path or oversized archive); refusing to extract"
 		return 1
 	fi
 
-	log "Unpacking $label into $dest_dir"
-	unzip -q "$zip_path" -d "$dest_dir"
+	mkdir -p "$SCRATCH_DIR"
+	stage_dir="$(mktemp -d "$SCRATCH_DIR/extract.XXXXXX")"
+
+	log "Unpacking $label ($archive_format) into a staging area for inspection"
+	case "$archive_format" in
+		zip)
+			unzip -q "$archive_path" -d "$stage_dir"
+			;;
+		7z)
+			7z x -y -o"$stage_dir" "$archive_path" > /dev/null
+			;;
+		*)
+			log "ERROR: unrecognized archive format for $label"
+			rm -rf "$stage_dir"
+			return 1
+			;;
+	esac
+
+	if find "$stage_dir" -type l -print -quit | grep -q .; then
+		log "ERROR: $label contains a symlink entry after extraction; refusing to stage it"
+		rm -rf "$stage_dir"
+		return 1
+	fi
+
+	log "Staging validated contents of $label into $dest_dir"
+	mkdir -p "$dest_dir"
+	cp -RP "$stage_dir/." "$dest_dir/"
+	rm -rf "$stage_dir"
 }
 
 function fetch_archive_from_url() {
 	local url="$ARCHIVE_URL_ARG"
-	local dest="$SCRATCH_DIR/mf6_archive_download.zip"
+	local dest="$SCRATCH_DIR/mf6_archive_download"
 
 	if [[ -z "$url" ]]; then
 		return 0
@@ -219,7 +247,7 @@ function fetch_archive_from_url() {
 		return 1
 	fi
 
-	if ! safe_unzip "$dest" "$RUN_ROOT" "archive downloaded from $url"; then
+	if ! safe_extract "$dest" "$RUN_ROOT" "archive downloaded from $url"; then
 		rm -f "$dest"
 		return 1
 	fi
@@ -243,7 +271,7 @@ function stage_user_inputs() {
 	fi
 
 	if [[ -f "$sim_archive" ]]; then
-		safe_unzip "$sim_archive" "$RUN_ROOT" "simulation.zip"
+		safe_extract "$sim_archive" "$RUN_ROOT" "simulation.zip"
 	else
 		shopt -s nullglob
 		archives=("$INPUTS_DIR"/*.zip)
@@ -253,7 +281,7 @@ function stage_user_inputs() {
 				if [[ "$archive" == "$sim_archive" ]]; then
 					continue
 				fi
-				safe_unzip "$archive" "$RUN_ROOT" "$(basename "$archive")"
+				safe_extract "$archive" "$RUN_ROOT" "$(basename "$archive")"
 			done
 		fi
 	fi
