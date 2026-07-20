@@ -53,6 +53,13 @@ def parse_args() -> argparse.Namespace:
         help="GHCR image owner/organization. Defaults to wmobley.",
     )
     parser.add_argument(
+        "--apps",
+        nargs="+",
+        choices=APP_DIRS,
+        default=list(APP_DIRS),
+        help="Subset of app directories to update/register. Defaults to all four.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print planned app definition changes without writing files or registering them.",
@@ -80,8 +87,8 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
         stream.write("\n")
 
 
-def app_json_paths() -> list[Path]:
-    return [REPO_ROOT / app_dir / "app.json" for app_dir in APP_DIRS]
+def app_json_paths(app_dirs: tuple[str, ...] = APP_DIRS) -> list[Path]:
+    return [REPO_ROOT / app_dir / "app.json" for app_dir in app_dirs]
 
 
 def update_app(path: Path, version: str, image_tag: str, owner: str, write: bool) -> dict[str, Any]:
@@ -124,7 +131,7 @@ def main() -> int:
     image_tag = f"sha-{sha}"
 
     apps: list[dict[str, Any]] = []
-    for path in app_json_paths():
+    for path in app_json_paths(args.apps):
         if not path.exists():
             raise FileNotFoundError(path)
         app = update_app(path, version, image_tag, args.owner, write=not args.dry_run)
