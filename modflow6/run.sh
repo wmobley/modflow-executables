@@ -8,9 +8,12 @@ INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_ROOT="$PWD/run"
+SCRATCH_DIR="$PWD/scratch"
 DEFAULT_DATA_DIR=""
 DEFAULT_STAGE_DIR="$RUN_ROOT/default_data"
 DEFAULT_DATA_DIR_ARG=""
+ARCHIVE_URL_ARG=""
+ARCHIVE_DOWNLOAD_MAX_BYTES=$((8 * 1024 * 1024 * 1024))  # 8 GiB, matches validate_zip.py cap
 
 function log() {
 	printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -47,21 +50,23 @@ function copy_staged_inputs() {
 # -----------------------------------------------------------------------------
 # Argument parsing and input staging.
 # -----------------------------------------------------------------------------
-function parse_args() {
-	local arg
+function normalize_arg() {
+	case "${1:-}" in
+		""|"__NONE__"|"NONE"|"none"|"null"|"NULL")
+			printf ''
+			;;
+		*)
+			printf '%s' "$1"
+			;;
+	esac
+}
 
-	DEFAULT_DATA_DIR_ARG=""
-	for arg in "$@"; do
-		case "$arg" in
-			""|"__NONE__"|"NONE"|"none"|"null"|"NULL")
-				;;
-			*)
-				if [[ -z "$DEFAULT_DATA_DIR_ARG" ]]; then
-					DEFAULT_DATA_DIR_ARG="$arg"
-				fi
-				;;
-		esac
-	done
+function parse_args() {
+	# Positional app args, per app.json's parameterSet.appArgs order:
+	#   $1 = mf6DefaultDir  (baseline directory path, existing)
+	#   $2 = mf6ArchiveUrl  (optional https URL to a model zip, new)
+	DEFAULT_DATA_DIR_ARG="$(normalize_arg "${1:-}")"
+	ARCHIVE_URL_ARG="$(normalize_arg "${2:-}")"
 }
 
 function resolve_default_data_dir() {
@@ -177,6 +182,51 @@ function stage_default_data_dir() {
 	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
 }
 
+function safe_unzip() {
+	local zip_path="$1"
+	local dest_dir="$2"
+	local label="${3:-$(basename "$zip_path")}"
+
+	log "Validating $label before extraction"
+	if ! python3 "$SCRIPT_DIR/validate_zip.py" "$zip_path"; then
+		log "ERROR: $label failed safety validation (unsafe path, symlink entry, or oversized archive); refusing to extract"
+		return 1
+	fi
+
+	log "Unpacking $label into $dest_dir"
+	unzip -q "$zip_path" -d "$dest_dir"
+}
+
+function fetch_archive_from_url() {
+	local url="$ARCHIVE_URL_ARG"
+	local dest="$SCRATCH_DIR/mf6_archive_download.zip"
+
+	if [[ -z "$url" ]]; then
+		return 0
+	fi
+
+	if [[ ! "$url" =~ ^https://[A-Za-z0-9.-]+(/.*)?$ ]]; then
+		log "ERROR: mf6ArchiveUrl rejected — only https:// URLs are supported ($url)"
+		return 1
+	fi
+
+	mkdir -p "$SCRATCH_DIR"
+	rm -f "$dest"
+	log "Downloading model archive from $url into $SCRATCH_DIR"
+	if ! curl -fsSL --max-filesize "$ARCHIVE_DOWNLOAD_MAX_BYTES" --max-time 1800 -o "$dest" "$url"; then
+		log "ERROR: failed to download archive from $url"
+		rm -f "$dest"
+		return 1
+	fi
+
+	if ! safe_unzip "$dest" "$RUN_ROOT" "archive downloaded from $url"; then
+		rm -f "$dest"
+		return 1
+	fi
+
+	rm -f "$dest"
+}
+
 function stage_user_inputs() {
 	local sim_archive="$INPUTS_DIR/simulation.zip"
 	local archive
@@ -185,14 +235,15 @@ function stage_user_inputs() {
 	rm -rf "$RUN_ROOT"
 	mkdir -p "$RUN_ROOT"
 
+	fetch_archive_from_url
+
 	if [[ -d "$INPUTS_DIR" ]]; then
 		log "Copying staged inputs from $INPUTS_DIR into $RUN_ROOT"
 		copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
 	fi
 
 	if [[ -f "$sim_archive" ]]; then
-		log "Unpacking simulation.zip into $RUN_ROOT"
-		unzip -q "$sim_archive" -d "$RUN_ROOT"
+		safe_unzip "$sim_archive" "$RUN_ROOT" "simulation.zip"
 	else
 		shopt -s nullglob
 		archives=("$INPUTS_DIR"/*.zip)
@@ -202,8 +253,7 @@ function stage_user_inputs() {
 				if [[ "$archive" == "$sim_archive" ]]; then
 					continue
 				fi
-				log "Unpacking $(basename "$archive") into $RUN_ROOT"
-				unzip -q "$archive" -d "$RUN_ROOT"
+				safe_unzip "$archive" "$RUN_ROOT" "$(basename "$archive")"
 			done
 		fi
 	fi

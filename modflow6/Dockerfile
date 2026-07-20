@@ -20,6 +20,7 @@ WORKDIR /tapis
 COPY run.sh /tapis/run.sh
 COPY modflow.py /tapis/modflow.py
 COPY resolve_sim_nam.py /tapis/resolve_sim_nam.py
+COPY validate_zip.py /tapis/validate_zip.py
 
 RUN chmod 755 /tapis/run.sh
 

@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.ec7e281",
+  "version": "0.0.86bc388",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-ec7e281",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-86bc388",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -23,8 +23,8 @@
     "execSystemInputDir": "${JobWorkingDir}",
     "execSystemOutputDir": "${JobWorkingDir}/output",
     "execSystemLogicalQueue": "vm-small",
-    "archiveSystemId": "cloud.data",
-    "archiveSystemDir": "HOST_EVAL($HOME)/tapis-jobs-archive/${JobCreateDate}/${JobName}-${JobUUID}",
+    "archiveSystemId": "ls6",
+    "archiveSystemDir": "HOST_EVAL($WORK)/tapis-jobs-archive/${JobCreateDate}/${JobName}-${JobUUID}",
     "archiveOnAppError": true,
     "isMpi": false,
     "mpiCmd": null,
@@ -39,6 +39,12 @@
           "notes": {
             "isHidden": true
           }
+        },
+        {
+          "arg": "__NONE__",
+          "name": "mf6ArchiveUrl",
+          "description": "Optional https:// URL to a zip archive containing a MODFLOW 6 model (e.g. a published GAM archive). If supplied, the archive is downloaded into scratch space and unzipped into the run directory as the simulation baseline before any uploaded override files are applied.",
+          "inputMode": "OPTIONAL"
         }
       ],
       "schedulerOptions": [
@@ -383,7 +389,7 @@
   "notes": {
     "label": "MODFLOW 6",
     "helpUrl": "https://www.simonwenkel.com/notes/geo/software/modflow/compiling-modflow-on-linux.html",
-    "helpText": "Provide either a simulation ZIP or any subset of MF6 input files. The launch script stages those files under provided/, fills missing files from the configured baseline directory, and generates mfsim.nam and a model name file when they are not supplied.",
+    "helpText": "Provide a simulation ZIP (uploaded, or fetched from mf6ArchiveUrl), and/or any subset of MF6 input files. The launch script stages those files under provided/, fills missing files from the configured baseline directory, and generates mfsim.nam and a model name file when they are not supplied.",
     "hideNodeCountAndCoresPerNode": true,
     "isInteractive": false,
     "icon": "jupyter",
