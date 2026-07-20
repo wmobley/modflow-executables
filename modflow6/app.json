@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.86bc388",
+  "version": "0.0.4c084b8",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-86bc388",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-4c084b8",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -44,7 +44,7 @@
           "arg": "__NONE__",
           "name": "mf6ArchiveUrl",
           "description": "Optional https:// URL to a zip archive containing a MODFLOW 6 model (e.g. a published GAM archive). If supplied, the archive is downloaded into scratch space and unzipped into the run directory as the simulation baseline before any uploaded override files are applied.",
-          "inputMode": "OPTIONAL"
+          "inputMode": "INCLUDE_ON_DEMAND"
         }
       ],
       "schedulerOptions": [
