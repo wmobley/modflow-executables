@@ -8,9 +8,12 @@ INPUTS_DIR="${_tapisExecSystemInputDir:-/tapis/input}"
 OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_ROOT="$PWD/run"
+SCRATCH_DIR="$PWD/scratch"
 DEFAULT_DATA_DIR=""
 DEFAULT_STAGE_DIR="$RUN_ROOT/default_data"
 DEFAULT_DATA_DIR_ARG=""
+ARCHIVE_URL_ARG=""
+ARCHIVE_DOWNLOAD_MAX_BYTES=$((8 * 1024 * 1024 * 1024))  # 8 GiB, matches validate_archive.py cap
 
 function log() {
 	printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -47,21 +50,23 @@ function copy_staged_inputs() {
 # -----------------------------------------------------------------------------
 # Argument parsing and input staging.
 # -----------------------------------------------------------------------------
-function parse_args() {
-	local arg
+function normalize_arg() {
+	case "${1:-}" in
+		""|"__NONE__"|"NONE"|"none"|"null"|"NULL")
+			printf ''
+			;;
+		*)
+			printf '%s' "$1"
+			;;
+	esac
+}
 
-	DEFAULT_DATA_DIR_ARG=""
-	for arg in "$@"; do
-		case "$arg" in
-			""|"__NONE__"|"NONE"|"none"|"null"|"NULL")
-				;;
-			*)
-				if [[ -z "$DEFAULT_DATA_DIR_ARG" ]]; then
-					DEFAULT_DATA_DIR_ARG="$arg"
-				fi
-				;;
-		esac
-	done
+function parse_args() {
+	# Positional app args, per app.json's parameterSet.appArgs order:
+	#   $1 = mfusgDefaultDir  (baseline directory path, existing)
+	#   $2 = mfusgArchiveUrl  (optional https URL to a model zip/7z, new)
+	DEFAULT_DATA_DIR_ARG="$(normalize_arg "${1:-}")"
+	ARCHIVE_URL_ARG="$(normalize_arg "${2:-}")"
 }
 
 function resolve_default_data_dir() {
@@ -110,6 +115,116 @@ function stage_default_data_dir() {
 	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
 }
 
+function resolve_extracted_root() {
+	# If a directory's only content is a single subdirectory, descend into it
+	# (repeatedly) and return that as the effective root. Handles archives that
+	# wrap their real content in one or more outer folders instead of the
+	# files directly at the archive root, which would otherwise break relative
+	# file references between sibling packages.
+	local current="$1"
+	local item
+	local entry_count
+	local only_entry
+
+	while true; do
+		entry_count=0
+		only_entry=""
+		shopt -s nullglob dotglob
+		for item in "$current"/*; do
+			entry_count=$((entry_count + 1))
+			only_entry="$item"
+		done
+		shopt -u nullglob dotglob
+
+		if ((entry_count == 1)) && [[ -d "$only_entry" ]]; then
+			current="$only_entry"
+			continue
+		fi
+		break
+	done
+
+	printf '%s' "$current"
+}
+
+function safe_extract() {
+	local archive_path="$1"
+	local dest_dir="$2"
+	local label="${3:-$(basename "$archive_path")}"
+	local stage_dir
+	local archive_format
+	local content_root
+
+	log "Validating $label before extraction"
+	if ! archive_format="$(python3 "$SCRIPT_DIR/validate_archive.py" "$archive_path")"; then
+		log "ERROR: $label failed safety validation (unsafe path or oversized archive); refusing to extract"
+		return 1
+	fi
+
+	mkdir -p "$SCRATCH_DIR"
+	stage_dir="$(mktemp -d "$SCRATCH_DIR/extract.XXXXXX")"
+
+	log "Unpacking $label ($archive_format) into a staging area for inspection"
+	case "$archive_format" in
+		zip)
+			unzip -q "$archive_path" -d "$stage_dir"
+			;;
+		7z)
+			7z x -y -o"$stage_dir" "$archive_path" > /dev/null
+			;;
+		*)
+			log "ERROR: unrecognized archive format for $label"
+			rm -rf "$stage_dir"
+			return 1
+			;;
+	esac
+
+	if find "$stage_dir" -type l -print -quit | grep -q .; then
+		log "ERROR: $label contains a symlink entry after extraction; refusing to stage it"
+		rm -rf "$stage_dir"
+		return 1
+	fi
+
+	content_root="$(resolve_extracted_root "$stage_dir")"
+	if [[ "$content_root" != "$stage_dir" ]]; then
+		log "Unwrapping outer folder(s) in $label; using $(basename "$content_root") as content root"
+	fi
+
+	log "Staging validated contents of $label into $dest_dir"
+	mkdir -p "$dest_dir"
+	cp -RP "$content_root/." "$dest_dir/"
+	rm -rf "$stage_dir"
+}
+
+function fetch_archive_from_url() {
+	local url="$ARCHIVE_URL_ARG"
+	local dest="$SCRATCH_DIR/mfusg_archive_download"
+
+	if [[ -z "$url" ]]; then
+		return 0
+	fi
+
+	if [[ ! "$url" =~ ^https://[A-Za-z0-9.-]+(/.*)?$ ]]; then
+		log "ERROR: mfusgArchiveUrl rejected — only https:// URLs are supported ($url)"
+		return 1
+	fi
+
+	mkdir -p "$SCRATCH_DIR"
+	rm -f "$dest"
+	log "Downloading model archive from $url into $SCRATCH_DIR"
+	if ! curl -fsSL --max-filesize "$ARCHIVE_DOWNLOAD_MAX_BYTES" --max-time 1800 -o "$dest" "$url"; then
+		log "ERROR: failed to download archive from $url"
+		rm -f "$dest"
+		return 1
+	fi
+
+	if ! safe_extract "$dest" "$RUN_ROOT" "archive downloaded from $url"; then
+		rm -f "$dest"
+		return 1
+	fi
+
+	rm -f "$dest"
+}
+
 function stage_user_inputs() {
 	local sim_archive="$INPUTS_DIR/simulation.zip"
 	local archive
@@ -118,14 +233,15 @@ function stage_user_inputs() {
 	rm -rf "$RUN_ROOT"
 	mkdir -p "$RUN_ROOT"
 
+	fetch_archive_from_url
+
 	if [[ -d "$INPUTS_DIR" ]]; then
 		log "Copying staged inputs from $INPUTS_DIR into $RUN_ROOT"
 		copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
 	fi
 
 	if [[ -f "$sim_archive" ]]; then
-		log "Unpacking simulation.zip into $RUN_ROOT"
-		unzip -q "$sim_archive" -d "$RUN_ROOT"
+		safe_extract "$sim_archive" "$RUN_ROOT" "simulation.zip"
 	else
 		shopt -s nullglob
 		archives=("$INPUTS_DIR"/*.zip)
@@ -135,8 +251,7 @@ function stage_user_inputs() {
 				if [[ "$archive" == "$sim_archive" ]]; then
 					continue
 				fi
-				log "Unpacking $(basename "$archive") into $RUN_ROOT"
-				unzip -q "$archive" -d "$RUN_ROOT"
+				safe_extract "$archive" "$RUN_ROOT" "$(basename "$archive")"
 			done
 		fi
 	fi

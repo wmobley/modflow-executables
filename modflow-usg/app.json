@@ -1,6 +1,6 @@
 {
   "id": "modflow-usg-simulation",
-  "version": "0.0.ec7e281",
+  "version": "0.0.86bc388",
   "description": "Run a MODFLOW-USG simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-usg:sha-ec7e281",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-usg:sha-86bc388",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -23,8 +23,8 @@
     "execSystemInputDir": "${JobWorkingDir}",
     "execSystemOutputDir": "${JobWorkingDir}/output",
     "execSystemLogicalQueue": "vm-small",
-    "archiveSystemId": "cloud.data",
-    "archiveSystemDir": "HOST_EVAL($HOME)/tapis-jobs-archive/${JobCreateDate}/${JobName}-${JobUUID}",
+    "archiveSystemId": "ls6",
+    "archiveSystemDir": "HOST_EVAL($WORK)/tapis-jobs-archive/${JobCreateDate}/${JobName}-${JobUUID}",
     "archiveOnAppError": true,
     "isMpi": false,
     "mpiCmd": null,
@@ -39,6 +39,12 @@
           "notes": {
             "isHidden": true
           }
+        },
+        {
+          "arg": "__NONE__",
+          "name": "mfusgArchiveUrl",
+          "description": "Optional https:// URL to a zip or 7z archive containing a MODFLOW-USG model. If supplied, the archive is downloaded into scratch space and extracted into the run directory as the simulation baseline before any uploaded override files are applied.",
+          "inputMode": "INCLUDE_ON_DEMAND"
         }
       ],
       "schedulerOptions": [
@@ -303,7 +309,7 @@
   "notes": {
     "label": "MODFLOW-USG",
     "helpUrl": "https://github.com/In-For-Disaster-Analytics/Cookbook-Docker-Template",
-    "helpText": "Provide either a simulation ZIP or any subset of MODFLOW-USG input files. The launch script stages those files under provided/, fills missing files from the configured baseline directory, resolves the best available *.nam file, and runs MODFLOW-USG.",
+    "helpText": "Provide a simulation ZIP (uploaded, or fetched from mfusgArchiveUrl), and/or any subset of MODFLOW-USG input files. The launch script stages those files under provided/, fills missing files from the configured baseline directory, resolves the best available *.nam file, and runs MODFLOW-USG.",
     "hideNodeCountAndCoresPerNode": true,
     "isInteractive": false,
     "icon": "jupyter",
