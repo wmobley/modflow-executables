@@ -17,7 +17,7 @@ import sys
 import zipfile
 
 MAX_ENTRIES = 20000
-MAX_UNCOMPRESSED_BYTES = 8 * 1024 * 1024 * 1024  # 8 GiB
+MAX_UNCOMPRESSED_BYTES = 20 * 1024 * 1024 * 1024  # 20 GiB
 
 ZIP_MAGIC = b"PK"
 SEVENZ_MAGIC = b"7z\xbc\xaf\x27\x1c"
