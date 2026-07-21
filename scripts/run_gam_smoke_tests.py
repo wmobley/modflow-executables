@@ -44,7 +44,7 @@ GAM_TEST_CASES = [
         "app_version": "0.0.dc13cc2",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/trnt_n/trnt_n_v301/NTGAM_Final_model_2025.7z",
         "max_minutes": 240,
-        "note": "Already confirmed working once (2026-07-21) — included here for regression coverage.",
+        "note": "Confirmed working 2026-07-21: FINISHED in 130.6 min (needs maxMinutes above the app default of 60).",
     },
     {
         "label": "carrizo-wilcox-central",
@@ -52,7 +52,7 @@ GAM_TEST_CASES = [
         "app_version": "0.0.e5fea89",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/czwx_c/czwx_c_qcsp_v3.02_model_files.zip",
         "max_minutes": 240,
-        "note": "Confirmed working 2026-07-21: FINISHED in 12.2 min. Joint Carrizo-Wilcox/Queen City/Sparta model, 712MB zipped.",
+        "note": "Confirmed working 2026-07-21: FINISHED in 12.7 min. Joint Carrizo-Wilcox/Queen City/Sparta model, 712MB zipped.",
     },
     {
         "label": "yegua-jackson",
@@ -60,7 +60,7 @@ GAM_TEST_CASES = [
         "app_version": "0.0.e5fea89",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ygjk/Yegua_Jackson_Model_Only.zip",
         "max_minutes": 240,
-        "note": "Untested. Filename suggests a clean native-only archive, 149MB zipped.",
+        "note": "Confirmed working 2026-07-21: FINISHED in 6.6 min, the fastest of the four.",
     },
     {
         "label": "trinity-hill-country",
@@ -68,7 +68,7 @@ GAM_TEST_CASES = [
         "app_version": "0.0.e5fea89",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/trnt_h/trnt_h_v3.01/Final/trnt_h_v3.01_Model_Files.7z",
         "max_minutes": 240,
-        "note": "Untested. Has a sibling Supplemental_Data.7z archive — watch for missing files.",
+        "note": "Confirmed working 2026-07-21: FINISHED in 3.6 min. Ran clean without the sibling Supplemental_Data.7z archive.",
     },
 ]
 
