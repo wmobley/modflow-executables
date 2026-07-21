@@ -182,12 +182,44 @@ function stage_default_data_dir() {
 	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
 }
 
+function resolve_extracted_root() {
+	# If a directory's only content is a single subdirectory, descend into it
+	# (repeatedly) and return that as the effective root. Handles archives that
+	# wrap their real content in one or more outer folders (e.g. "Model/data/"
+	# instead of the files directly at the archive root), which would otherwise
+	# break MF6's relative OPEN/CLOSE file references between sibling packages.
+	local current="$1"
+	local item
+	local entry_count
+	local only_entry
+
+	while true; do
+		entry_count=0
+		only_entry=""
+		shopt -s nullglob dotglob
+		for item in "$current"/*; do
+			entry_count=$((entry_count + 1))
+			only_entry="$item"
+		done
+		shopt -u nullglob dotglob
+
+		if ((entry_count == 1)) && [[ -d "$only_entry" ]]; then
+			current="$only_entry"
+			continue
+		fi
+		break
+	done
+
+	printf '%s' "$current"
+}
+
 function safe_extract() {
 	local archive_path="$1"
 	local dest_dir="$2"
 	local label="${3:-$(basename "$archive_path")}"
 	local stage_dir
 	local archive_format
+	local content_root
 
 	log "Validating $label before extraction"
 	if ! archive_format="$(python3 "$SCRIPT_DIR/validate_archive.py" "$archive_path")"; then
@@ -219,9 +251,14 @@ function safe_extract() {
 		return 1
 	fi
 
+	content_root="$(resolve_extracted_root "$stage_dir")"
+	if [[ "$content_root" != "$stage_dir" ]]; then
+		log "Unwrapping outer folder(s) in $label; using $(basename "$content_root") as content root"
+	fi
+
 	log "Staging validated contents of $label into $dest_dir"
 	mkdir -p "$dest_dir"
-	cp -RP "$stage_dir/." "$dest_dir/"
+	cp -RP "$content_root/." "$dest_dir/"
 	rm -rf "$stage_dir"
 }
 
