@@ -70,6 +70,95 @@ GAM_TEST_CASES = [
         "max_minutes": 240,
         "note": "Confirmed working 2026-07-21: FINISHED in 3.6 min. Ran clean without the sibling Supplemental_Data.7z archive.",
     },
+    # --- Second batch (2026-07-21): 12 newly CKAN-registered GAMs. ---
+    # app_version 0.0.5f35915 is the first version on all 4 variants with the
+    # raised 20GiB uncompressed-size cap (needed for Seymour's 16.3GB archive).
+    # Untested as of this writing. Not included below (with reasons):
+    #   - gulf-coast-southern-superseded: no standalone archive exists anymore;
+    #     TWDB merged it into the central+southern combined model.
+    #   - high-plains-aquifer-system: real archive URL exists but there is no
+    #     modflow-nwt-simulation Tapis app to run it against.
+    {
+        "label": "edwards-bfz-northern",
+        "app_id": "modflow-usg-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_n/ebfz_n_v2.1/ebfz_n_v2.1_ModelFiles.7z",
+        "max_minutes": 180,
+        "note": "Untested. MODFLOW-USG beta, 22.5MB zipped / 2.5GB unzipped.",
+    },
+    {
+        "label": "edwards-bfz-barton-springs",
+        "app_id": "modflow-2000-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_b/Edwards_BFZ_Barton_Springs.zip",
+        "max_minutes": 120,
+        "note": "Untested. 14.7MB zipped / 1.1GB unzipped.",
+    },
+    {
+        "label": "edwards-bfz-san-antonio",
+        "app_id": "modflow-2000-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_s/Edwards_BFZ_San_Antonio_GWSIM.zip",
+        "max_minutes": 60,
+        "note": (
+            "Untested. Only one archive exists for this GAM (named 'GWSIM') despite the model "
+            "being described as MODFLOW-96/MODFLOW-2000 'mixed' — guessing MODFLOW-2000 app first. "
+            "If this fails on package/name-file resolution, retry with --app-id modflow-96-simulation "
+            "(app_version may differ; check registered versions first). 0.7MB zipped / 13.6MB unzipped."
+        ),
+    },
+    {
+        "label": "edwards-trinity-plateau-pecos-valley",
+        "app_id": "modflow-2000-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/eddt_r/Edwards_Trinity_Plateau_Model_Only.zip",
+        "max_minutes": 240,
+        "note": "Untested. 152MB zipped / 4.6GB unzipped.",
+    },
+    {
+        "label": "gulf-coast-central-southern",
+        "app_id": "modflow-usg-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/glfc_c_s/July19_glfc_c_s_ModelFiles.7z",
+        "max_minutes": 240,
+        "note": "Untested. 1.2GB zipped / 4.3GB unzipped.",
+    },
+    {
+        "label": "gulf-coast-northern",
+        "app_id": "modflow6-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/glfc_n/glfc_n_v4.1/glfc_n_v4.1_model_files.zip",
+        "max_minutes": 90,
+        "note": "Untested. v4.1, 43.9MB zipped / 500MB unzipped.",
+    },
+    {
+        "label": "seymour-and-blaine",
+        "app_id": "modflow-2000-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/symr/Seymour_Model_Only.zip",
+        "max_minutes": 600,
+        "note": (
+            "Untested. 459MB zipped / 16.3GB unzipped — exceeds the old 8GiB cap, requires the "
+            "20GiB-cap app version (0.0.5f35915) confirmed registered. Largest archive tested so far; "
+            "max_minutes set generously (10 hours)."
+        ),
+    },
+    {
+        "label": "lipan",
+        "app_id": "modflow-96-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/lipn/Lipan_Model_Only.zip",
+        "max_minutes": 90,
+        "note": "Untested. 92MB zipped / 880MB unzipped.",
+    },
+    {
+        "label": "nacatoch",
+        "app_id": "modflow-2000-simulation",
+        "app_version": "0.0.5f35915",
+        "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/nctc/Nacatoch_Model_Only.zip",
+        "max_minutes": 180,
+        "note": "Untested. 76MB zipped / 3.3GB unzipped.",
+    },
 ]
 
 
