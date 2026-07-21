@@ -29,7 +29,7 @@ from getpass import getpass
 
 BASE_URL = os.environ.get("TAPIS_BASE_URL", "https://portals.tapis.io").rstrip("/")
 DEFAULT_APP_ID = "modflow6-simulation"
-DEFAULT_APP_VERSION = "0.0.e74333b"
+DEFAULT_APP_VERSION = "0.0.dc13cc2"
 TERMINAL_STATES = {"FINISHED", "FAILED", "CANCELLED", "STOPPED"}
 
 
@@ -59,6 +59,15 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Optional override file input, e.g. mf6-wel=tapis://<system>/<path>/model.wel. "
             "Repeatable."
+        ),
+    )
+    parser.add_argument(
+        "--max-minutes",
+        type=int,
+        default=None,
+        help=(
+            "Override the job's wall-clock time limit in minutes for this submission only "
+            "(the app's registered default is 60, which is too short for a full NTGAM run)."
         ),
     )
     parser.add_argument("--watch", action="store_true", help="Poll the job until it reaches a terminal state.")
@@ -113,6 +122,9 @@ def submit(token: str, args: argparse.Namespace) -> str:
     file_inputs = parse_file_inputs(args.file_input)
     if file_inputs:
         body["fileInputs"] = file_inputs
+
+    if args.max_minutes:
+        body["maxMinutes"] = args.max_minutes
 
     req = urllib.request.Request(
         f"{BASE_URL}/v3/jobs/submit",
