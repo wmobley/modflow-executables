@@ -52,7 +52,7 @@ GAM_TEST_CASES = [
         "app_version": "0.0.e5fea89",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/czwx_c/czwx_c_qcsp_v3.02_model_files.zip",
         "max_minutes": 240,
-        "note": "Untested. Joint Carrizo-Wilcox/Queen City/Sparta model, 712MB zipped.",
+        "note": "Confirmed working 2026-07-21: FINISHED in 12.2 min. Joint Carrizo-Wilcox/Queen City/Sparta model, 712MB zipped.",
     },
     {
         "label": "yegua-jackson",
