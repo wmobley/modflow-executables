@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import time
@@ -181,25 +182,76 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_token() -> str:
-    token = os.environ.get("TAPIS_TOKEN", "").strip()
-    if token:
-        return token
-
-    username = os.environ.get("TAPIS_USERNAME", "").strip() or input("Tapis username: ").strip()
-    password = os.environ.get("TAPIS_PASSWORD", "") or getpass("Tapis password: ")
-    body = json.dumps({"username": username, "password": password, "grant_type": "password"}).encode()
-    req = urllib.request.Request(
-        f"{BASE_URL}/v3/oauth2/tokens",
-        data=body,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    payload = json.loads(urllib.request.urlopen(req, timeout=30).read())
-    return payload["result"]["access_token"]["access_token"]
+def _jwt_exp(token: str) -> float | None:
+    """Decode a JWT's exp claim (unix seconds) without verifying signature."""
+    try:
+        payload_b64 = token.split(".")[1]
+        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
+        claims = json.loads(base64.urlsafe_b64decode(padded))
+        return float(claims["exp"])
+    except Exception:  # noqa: BLE001 - if we can't tell, caller should refresh anyway
+        return None
 
 
-def submit(token: str, case: dict) -> str:
+class TokenBox:
+    """Holds a Tapis access token and re-authenticates from scratch when it's
+    close to expiring. Tapis access tokens issued by this portal's client are
+    short-lived (observed ~4 hours) and this client does not appear to receive
+    a refresh_token, so the only reliable renewal is a fresh password grant.
+    Username/password are kept in memory only, for this process's lifetime,
+    never printed or logged.
+    """
+
+    REFRESH_MARGIN_SECONDS = 300  # refresh if within 5 minutes of expiry
+
+    def __init__(self) -> None:
+        self._static_token = os.environ.get("TAPIS_TOKEN", "").strip()
+        self.username = os.environ.get("TAPIS_USERNAME", "").strip() or input("Tapis username: ").strip()
+        self.password = os.environ.get("TAPIS_PASSWORD", "") or getpass("Tapis password: ")
+        self.token = self._static_token or ""
+        self.expires_at: float | None = None
+        if not self._static_token:
+            self._authenticate()
+
+    def _authenticate(self) -> None:
+        body = json.dumps(
+            {"username": self.username, "password": self.password, "grant_type": "password"}
+        ).encode()
+        req = urllib.request.Request(
+            f"{BASE_URL}/v3/oauth2/tokens",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        payload = json.loads(urllib.request.urlopen(req, timeout=30).read())
+        self.token = payload["result"]["access_token"]["access_token"]
+        self.expires_at = _jwt_exp(self.token)
+        if self.expires_at:
+            remaining_min = (self.expires_at - time.time()) / 60
+            print(f"  (Tapis token refreshed, valid ~{remaining_min:.0f} more minutes)")
+
+    def ensure_fresh(self) -> str:
+        if self._static_token:
+            return self.token  # user-supplied token: nothing we can do to refresh it
+        needs_refresh = (
+            self.expires_at is None
+            or time.time() > self.expires_at - self.REFRESH_MARGIN_SECONDS
+        )
+        if needs_refresh:
+            self._authenticate()
+        return self.token
+
+    def force_refresh(self) -> str:
+        if self._static_token:
+            raise RuntimeError(
+                "Tapis token expired and TAPIS_TOKEN was set statically; re-run with "
+                "TAPIS_USERNAME/TAPIS_PASSWORD instead so this script can refresh it."
+            )
+        self._authenticate()
+        return self.token
+
+
+def submit(box: TokenBox, case: dict) -> str:
     arg_name = ARCHIVE_URL_ARG_BY_APP[case["app_id"]]
     job_name = f"gam-smoke-{case['label']}-{int(time.time())}"
     body: dict = {
@@ -214,17 +266,26 @@ def submit(token: str, case: dict) -> str:
         "maxMinutes": case["max_minutes"],
     }
 
-    req = urllib.request.Request(
-        f"{BASE_URL}/v3/jobs/submit",
-        data=json.dumps(body).encode(),
-        headers={"X-Tapis-Token": token, "Content-Type": "application/json"},
-        method="POST",
-    )
-    try:
-        resp = json.loads(urllib.request.urlopen(req, timeout=30).read())
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode()
-        raise SystemExit(f"Job submission failed for {case['label']} ({exc.code}): {detail}")
+    for attempt in range(2):  # one retry after a forced token refresh on 401
+        token = box.ensure_fresh()
+        req = urllib.request.Request(
+            f"{BASE_URL}/v3/jobs/submit",
+            data=json.dumps(body).encode(),
+            headers={"X-Tapis-Token": token, "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            resp = json.loads(urllib.request.urlopen(req, timeout=30).read())
+            break
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode()
+            if exc.code == 401 and attempt == 0:
+                print("    (token expired mid-run; refreshing and retrying submit)")
+                box.force_refresh()
+                continue
+            raise SystemExit(f"Job submission failed for {case['label']} ({exc.code}): {detail}")
+    else:
+        raise SystemExit(f"Job submission failed for {case['label']}: retries exhausted")
 
     uuid = resp["result"]["uuid"]
     print(f"  Submitted {job_name}: {uuid}")
@@ -232,15 +293,23 @@ def submit(token: str, case: dict) -> str:
     return uuid
 
 
-def watch(token: str, uuid: str, poll_seconds: int) -> dict:
+def watch(box: TokenBox, uuid: str, poll_seconds: int) -> dict:
     last_status = None
     start = time.time()
     while True:
+        token = box.ensure_fresh()
         req = urllib.request.Request(
             f"{BASE_URL}/v3/jobs/{uuid}",
             headers={"X-Tapis-Token": token},
         )
-        result = json.loads(urllib.request.urlopen(req, timeout=30).read())["result"]
+        try:
+            result = json.loads(urllib.request.urlopen(req, timeout=30).read())["result"]
+        except urllib.error.HTTPError as exc:
+            if exc.code == 401:
+                print("    (token expired mid-poll; refreshing)")
+                box.force_refresh()
+                continue
+            raise
         status = result.get("status", "UNKNOWN")
         if status != last_status:
             elapsed_min = (time.time() - start) / 60
@@ -251,7 +320,8 @@ def watch(token: str, uuid: str, poll_seconds: int) -> dict:
         time.sleep(poll_seconds)
 
 
-def fetch_log_tail(token: str, uuid: str, max_chars: int = 800) -> str:
+def fetch_log_tail(box: TokenBox, uuid: str, max_chars: int = 800) -> str:
+    token = box.ensure_fresh()
     req = urllib.request.Request(
         f"{BASE_URL}/v3/jobs/{uuid}/output/download/tapisjob.out",
         headers={"X-Tapis-Token": token},
@@ -280,15 +350,15 @@ def main() -> int:
             print(f"    note: {case['note']}")
         return 0
 
-    token = get_token()
+    box = TokenBox()
     results = []
 
     for i, case in enumerate(cases, start=1):
         print(f"\n=== [{i}/{len(cases)}] {case['label']} ({case['app_id']}) ===")
         start = time.time()
         try:
-            uuid = submit(token, case)
-            final = watch(token, uuid, args.poll_seconds)
+            uuid = submit(box, case)
+            final = watch(box, uuid, args.poll_seconds)
             duration_min = (time.time() - start) / 60
             status = final.get("status", "UNKNOWN")
             results.append(
@@ -303,7 +373,7 @@ def main() -> int:
             if status != "FINISHED":
                 print(f"    lastMessage: {final.get('lastMessage')}")
                 print("    tapisjob.out tail:")
-                print("    " + fetch_log_tail(token, uuid).replace("\n", "\n    "))
+                print("    " + fetch_log_tail(box, uuid).replace("\n", "\n    "))
         except Exception as exc:  # noqa: BLE001 - report and continue to next case
             duration_min = (time.time() - start) / 60
             print(f"    ERROR: {exc}")
