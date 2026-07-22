@@ -1,0 +1,168 @@
+{
+  "id": "modflow-2000-simulation",
+  "version": "0.0.09f0070",
+  "name": "MODFLOW-2000",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow-2000:sha-09f0070",
+  "execSystemId": "ls6",
+  "execSystemLogicalQueue": "vm-small",
+  "inputs": [
+    {
+      "id": "mf2000-simulation-archive",
+      "role": "input",
+      "path": "simulation.zip",
+      "optional": true
+    },
+    {
+      "id": "mf2000-nam",
+      "role": "input",
+      "path": "provided/model.nam",
+      "optional": true
+    },
+    {
+      "id": "mf2000-bas",
+      "role": "input",
+      "path": "provided/model.bas",
+      "optional": true
+    },
+    {
+      "id": "mf2000-bcf",
+      "role": "input",
+      "path": "provided/model.bcf",
+      "optional": true
+    },
+    {
+      "id": "mf2000-dis",
+      "role": "input",
+      "path": "provided/model.dis",
+      "optional": true
+    },
+    {
+      "id": "mf2000-drn",
+      "role": "input",
+      "path": "provided/model.drn",
+      "optional": true
+    },
+    {
+      "id": "mf2000-evt",
+      "role": "input",
+      "path": "provided/model.evt",
+      "optional": true
+    },
+    {
+      "id": "mf2000-ghb",
+      "role": "input",
+      "path": "provided/model.ghb",
+      "optional": true
+    },
+    {
+      "id": "mf2000-gmg",
+      "role": "input",
+      "path": "provided/model.gmg",
+      "optional": true
+    },
+    {
+      "id": "mf2000-oc",
+      "role": "input",
+      "path": "provided/model.oc",
+      "optional": true
+    },
+    {
+      "id": "mf2000-rch",
+      "role": "input",
+      "path": "provided/model.rch",
+      "optional": true
+    },
+    {
+      "id": "mf2000-res",
+      "role": "input",
+      "path": "provided/model.res",
+      "optional": true
+    },
+    {
+      "id": "mf2000-str",
+      "role": "input",
+      "path": "provided/model.str",
+      "optional": true
+    },
+    {
+      "id": "mf2000-wel",
+      "role": "input",
+      "path": "provided/model.wel",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-01",
+      "role": "input",
+      "path": "support/support-01",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-02",
+      "role": "input",
+      "path": "support/support-02",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-03",
+      "role": "input",
+      "path": "support/support-03",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-04",
+      "role": "input",
+      "path": "support/support-04",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-05",
+      "role": "input",
+      "path": "support/support-05",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-06",
+      "role": "input",
+      "path": "support/support-06",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-07",
+      "role": "input",
+      "path": "support/support-07",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-08",
+      "role": "input",
+      "path": "support/support-08",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-09",
+      "role": "input",
+      "path": "support/support-09",
+      "optional": true
+    },
+    {
+      "id": "mf2000-support-10",
+      "role": "input",
+      "path": "support/support-10",
+      "optional": true
+    }
+  ],
+  "outputs": [
+    {
+      "id": "lst",
+      "role": "output"
+    },
+    {
+      "id": "hds",
+      "role": "output"
+    },
+    {
+      "id": "cbc",
+      "role": "output"
+    }
+  ]
+}

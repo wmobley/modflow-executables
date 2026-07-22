@@ -1,0 +1,164 @@
+{
+  "id": "modflow-96-simulation",
+  "version": "0.0.09f0070",
+  "name": "MODFLOW-96",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow-96:sha-09f0070",
+  "execSystemId": "ls6",
+  "execSystemLogicalQueue": "vm-small",
+  "inputs": [
+    {
+      "id": "mf96-simulation-archive",
+      "role": "input",
+      "path": "simulation.zip",
+      "optional": true
+    },
+    {
+      "id": "mf96-nam",
+      "role": "input",
+      "path": "provided/model.nam",
+      "optional": true
+    },
+    {
+      "id": "mf96-bas",
+      "role": "input",
+      "path": "provided/bas.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-bcf",
+      "role": "input",
+      "path": "provided/bcf.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-discret",
+      "role": "input",
+      "path": "provided/discret.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-drn",
+      "role": "input",
+      "path": "provided/drn.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-ghb",
+      "role": "input",
+      "path": "provided/ghb.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-oc",
+      "role": "input",
+      "path": "provided/oc.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-rch",
+      "role": "input",
+      "path": "provided/rch.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-riv",
+      "role": "input",
+      "path": "provided/riv.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-sor",
+      "role": "input",
+      "path": "provided/sor.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-wel",
+      "role": "input",
+      "path": "provided/wel.dat",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-01",
+      "role": "input",
+      "path": "support/support-01",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-02",
+      "role": "input",
+      "path": "support/support-02",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-03",
+      "role": "input",
+      "path": "support/support-03",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-04",
+      "role": "input",
+      "path": "support/support-04",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-05",
+      "role": "input",
+      "path": "support/support-05",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-06",
+      "role": "input",
+      "path": "support/support-06",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-07",
+      "role": "input",
+      "path": "support/support-07",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-08",
+      "role": "input",
+      "path": "support/support-08",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-09",
+      "role": "input",
+      "path": "support/support-09",
+      "optional": true
+    },
+    {
+      "id": "mf96-support-10",
+      "role": "input",
+      "path": "support/support-10",
+      "optional": true
+    }
+  ],
+  "outputs": [
+    {
+      "id": "lst",
+      "role": "output"
+    },
+    {
+      "id": "heads",
+      "role": "output"
+    },
+    {
+      "id": "budget",
+      "role": "output"
+    },
+    {
+      "id": "ddown",
+      "role": "output"
+    },
+    {
+      "id": "mt3d",
+      "role": "output"
+    }
+  ]
+}

@@ -1,0 +1,238 @@
+{
+  "id": "modflow6-simulation",
+  "version": "0.0.09f0070",
+  "name": "MODFLOW 6",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow6:sha-09f0070",
+  "execSystemId": "ls6",
+  "execSystemLogicalQueue": "vm-small",
+  "inputs": [
+    {
+      "id": "mf6-simulation-archive",
+      "role": "input",
+      "path": "simulation.zip",
+      "optional": true
+    },
+    {
+      "id": "mf6-sim-nam",
+      "role": "input",
+      "path": "provided/mfsim.nam",
+      "optional": true
+    },
+    {
+      "id": "mf6-model-nam",
+      "role": "input",
+      "path": "provided/model.nam",
+      "optional": true
+    },
+    {
+      "id": "mf6-tdis",
+      "role": "input",
+      "path": "provided/simulation.tdis",
+      "optional": true
+    },
+    {
+      "id": "mf6-ims",
+      "role": "input",
+      "path": "provided/simulation.ims",
+      "optional": true
+    },
+    {
+      "id": "mf6-dis",
+      "role": "input",
+      "path": "provided/model.dis",
+      "optional": true
+    },
+    {
+      "id": "mf6-disv",
+      "role": "input",
+      "path": "provided/model.disv",
+      "optional": true
+    },
+    {
+      "id": "mf6-disu",
+      "role": "input",
+      "path": "provided/model.disu",
+      "optional": true
+    },
+    {
+      "id": "mf6-ic",
+      "role": "input",
+      "path": "provided/model.ic",
+      "optional": true
+    },
+    {
+      "id": "mf6-npf",
+      "role": "input",
+      "path": "provided/model.npf",
+      "optional": true
+    },
+    {
+      "id": "mf6-sto",
+      "role": "input",
+      "path": "provided/model.sto",
+      "optional": true
+    },
+    {
+      "id": "mf6-oc",
+      "role": "input",
+      "path": "provided/model.oc",
+      "optional": true
+    },
+    {
+      "id": "mf6-wel",
+      "role": "input",
+      "path": "provided/model.wel",
+      "optional": true
+    },
+    {
+      "id": "mf6-rch",
+      "role": "input",
+      "path": "provided/model.rch",
+      "optional": true
+    },
+    {
+      "id": "mf6-rcha",
+      "role": "input",
+      "path": "provided/model.rcha",
+      "optional": true
+    },
+    {
+      "id": "mf6-drn",
+      "role": "input",
+      "path": "provided/model.drn",
+      "optional": true
+    },
+    {
+      "id": "mf6-riv",
+      "role": "input",
+      "path": "provided/model.riv",
+      "optional": true
+    },
+    {
+      "id": "mf6-ghb",
+      "role": "input",
+      "path": "provided/model.ghb",
+      "optional": true
+    },
+    {
+      "id": "mf6-chd",
+      "role": "input",
+      "path": "provided/model.chd",
+      "optional": true
+    },
+    {
+      "id": "mf6-csub",
+      "role": "input",
+      "path": "provided/model.csub",
+      "optional": true
+    },
+    {
+      "id": "mf6-obs",
+      "role": "input",
+      "path": "provided/model.obs",
+      "optional": true
+    },
+    {
+      "id": "mf6-rcha-02",
+      "role": "input",
+      "path": "provided/model-02.rcha",
+      "optional": true
+    },
+    {
+      "id": "mf6-rcha-03",
+      "role": "input",
+      "path": "provided/model-03.rcha",
+      "optional": true
+    },
+    {
+      "id": "mf6-obs-02",
+      "role": "input",
+      "path": "provided/model-02.obs",
+      "optional": true
+    },
+    {
+      "id": "mf6-obs-03",
+      "role": "input",
+      "path": "provided/model-03.obs",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-01",
+      "role": "input",
+      "path": "support/support-01",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-02",
+      "role": "input",
+      "path": "support/support-02",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-03",
+      "role": "input",
+      "path": "support/support-03",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-04",
+      "role": "input",
+      "path": "support/support-04",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-05",
+      "role": "input",
+      "path": "support/support-05",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-06",
+      "role": "input",
+      "path": "support/support-06",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-07",
+      "role": "input",
+      "path": "support/support-07",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-08",
+      "role": "input",
+      "path": "support/support-08",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-09",
+      "role": "input",
+      "path": "support/support-09",
+      "optional": true
+    },
+    {
+      "id": "mf6-support-10",
+      "role": "input",
+      "path": "support/support-10",
+      "optional": true
+    }
+  ],
+  "outputs": [
+    {
+      "id": "lst",
+      "role": "output"
+    },
+    {
+      "id": "hds",
+      "role": "output"
+    },
+    {
+      "id": "cbc",
+      "role": "output"
+    },
+    {
+      "id": "obs",
+      "role": "output"
+    }
+  ]
+}
