@@ -1,6 +1,6 @@
 {
   "id": "modflow-usg-simulation",
-  "version": "0.0.5f35915",
+  "version": "0.0.09f0070",
   "description": "Run a MODFLOW-USG simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-usg:sha-5f35915",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-usg:sha-09f0070",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,

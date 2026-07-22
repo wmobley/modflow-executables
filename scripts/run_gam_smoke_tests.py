@@ -72,8 +72,12 @@ GAM_TEST_CASES = [
         "note": "Confirmed working 2026-07-21: FINISHED in 3.6 min. Ran clean without the sibling Supplemental_Data.7z archive.",
     },
     # --- Second batch (2026-07-21): 12 newly CKAN-registered GAMs. ---
-    # app_version 0.0.5f35915 is the first version on all 4 variants with the
-    # raised 20GiB uncompressed-size cap (needed for Seymour's 16.3GB archive).
+    # app_version 0.0.5f35915 raised the 20GiB uncompressed-size cap (needed
+    # for Seymour's 16.3GB archive). app_version 0.0.09f0070 supersedes it:
+    # fixes safe_extract() cleanup failing with "Permission denied" on
+    # archives containing read-only directories (hit by Barton Springs and
+    # Seymour), and fixes MF6 not resolving backslash path separators in
+    # Windows-authored package files (hit by Gulf Coast Northern).
     # Untested as of this writing. Not included below (with reasons):
     #   - gulf-coast-southern-superseded: no standalone archive exists anymore;
     #     TWDB merged it into the central+southern combined model.
@@ -82,83 +86,112 @@ GAM_TEST_CASES = [
     {
         "label": "edwards-bfz-northern",
         "app_id": "modflow-usg-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_n/ebfz_n_v2.1/ebfz_n_v2.1_ModelFiles.7z",
         "max_minutes": 180,
-        "note": "Untested. MODFLOW-USG beta, 22.5MB zipped / 2.5GB unzipped.",
+        "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 12.2 min. MODFLOW-USG beta, 22.5MB zipped / 2.5GB unzipped.",
     },
     {
         "label": "edwards-bfz-barton-springs",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_b/Edwards_BFZ_Barton_Springs.zip",
         "max_minutes": 120,
-        "note": "Untested. 14.7MB zipped / 1.1GB unzipped.",
+        "note": (
+            "Confirmed working 2026-07-22 under 0.0.09f0070: FINISHED in 17.2 min. Required "
+            "0.0.09f0070's safe_extract() permission-denied fix: archive contains read-only "
+            "directories that broke stage-dir cleanup under 0.0.5f35915. 14.7MB zipped / "
+            "1.1GB unzipped."
+        ),
     },
     {
         "label": "edwards-bfz-san-antonio",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_s/Edwards_BFZ_San_Antonio_GWSIM.zip",
         "max_minutes": 60,
         "note": (
-            "Untested. Only one archive exists for this GAM (named 'GWSIM') despite the model "
-            "being described as MODFLOW-96/MODFLOW-2000 'mixed' — guessing MODFLOW-2000 app first. "
-            "If this fails on package/name-file resolution, retry with --app-id modflow-96-simulation "
-            "(app_version may differ; check registered versions first). 0.7MB zipped / 13.6MB unzipped."
+            "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED (560 min — queued overnight, "
+            "not actual runtime). Only one archive exists for this GAM (named 'GWSIM') despite the "
+            "model being described as MODFLOW-96/MODFLOW-2000 'mixed'; MODFLOW-2000 app resolved it "
+            "fine. 0.7MB zipped / 13.6MB unzipped."
         ),
     },
     {
         "label": "edwards-trinity-plateau-pecos-valley",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/eddt_r/Edwards_Trinity_Plateau_Model_Only.zip",
         "max_minutes": 240,
-        "note": "Untested. 152MB zipped / 4.6GB unzipped.",
+        "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 86.4 min. 152MB zipped / 4.6GB unzipped.",
     },
     {
         "label": "gulf-coast-central-southern",
         "app_id": "modflow-usg-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/glfc_c_s/July19_glfc_c_s_ModelFiles.7z",
         "max_minutes": 240,
-        "note": "Untested. 1.2GB zipped / 4.3GB unzipped.",
+        "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 12.7 min. 1.2GB zipped / 4.3GB unzipped.",
     },
     {
         "label": "gulf-coast-northern",
         "app_id": "modflow6-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/glfc_n/glfc_n_v4.1/glfc_n_v4.1_model_files.zip",
         "max_minutes": 90,
-        "note": "Untested. v4.1, 43.9MB zipped / 500MB unzipped.",
+        "note": (
+            "KNOWN LIMITATION (2026-07-22): the 0.0.09f0070 backslash-path-separator fix resolved "
+            "the original infra failure (DIS package referenced array_data\\delr.txt literally, "
+            "which 0.0.5f35915 couldn't open) — MF6 now reads the DIS package and runs iterations. "
+            "It now fails on IMS solver non-convergence instead (residual oscillating ~1452.6 after "
+            "150 outer iterations, stress period 1 time step 1). This looks like a solver-tuning / "
+            "model-quality issue in this 'draft recalibration' GAM (already flagged unverified in "
+            "its CKAN metadata), not a launch-script bug — accepted as a known limitation rather "
+            "than pursued further. v4.1, 43.9MB zipped / 500MB unzipped."
+        ),
     },
     {
         "label": "seymour-and-blaine",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/symr/Seymour_Model_Only.zip",
         "max_minutes": 600,
         "note": (
-            "Untested. 459MB zipped / 16.3GB unzipped — exceeds the old 8GiB cap, requires the "
-            "20GiB-cap app version (0.0.5f35915) confirmed registered. Largest archive tested so far; "
-            "max_minutes set generously (10 hours)."
+            "KNOWN LIMITATION (2026-07-22): the 0.0.09f0070 safe_extract() permission-denied fix "
+            "resolved the original infra failure (archive contains read-only directories that broke "
+            "stage-dir cleanup under 0.0.5f35915) — extraction and staging now succeed. It now fails "
+            "because the archive bundles ~20 alternative model configurations (CD2_modflow with 8 "
+            "year/scenario subfolders, CD3_PM5, CD4_PM5_DOR, and a CD6_standard_mf2k explicitly "
+            "labeled 'standard' by TWDB) and resolve_nam.py's alphabetically-first-match heuristic "
+            "has no awareness of that labeling; it lands on CD2_modflow/.../2010, whose GMG package "
+            "(sey_pre.gmg, identically duplicated across all 6 CD2 year-folders, 38 bytes / one "
+            "parameter line) is missing the second line MODFLOW-2000's GMG reader expects, causing "
+            "an end-of-file crash (DIS/BAS read fine first, so this isn't an extraction problem). "
+            "Likely a genuine gap in that scenario family's data as packaged by TWDB. Accepted as a "
+            "known limitation rather than special-cased in resolve_nam.py or re-pointed at "
+            "CD6_standard_mf2k. Side note: this archive uses LZMA compression for most large "
+            "members, which some unzip builds (e.g. macOS's) silently extract as 0 bytes — did not "
+            "appear to affect the actual TACC run, but worth knowing if inspecting this archive "
+            "locally. 459MB zipped / 16.3GB unzipped — exceeds the old 8GiB cap, requires the "
+            "20GiB-cap app version. Largest archive tested so far; max_minutes set generously "
+            "(10 hours)."
         ),
     },
     {
         "label": "lipan",
         "app_id": "modflow-96-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/lipn/Lipan_Model_Only.zip",
         "max_minutes": 90,
-        "note": "Untested. 92MB zipped / 880MB unzipped.",
+        "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 12.7 min. 92MB zipped / 880MB unzipped.",
     },
     {
         "label": "nacatoch",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.5f35915",
+        "app_version": "0.0.09f0070",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/nctc/Nacatoch_Model_Only.zip",
         "max_minutes": 180,
-        "note": "Untested. 76MB zipped / 3.3GB unzipped.",
+        "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 6.7 min. 76MB zipped / 3.3GB unzipped.",
     },
 ]
 
