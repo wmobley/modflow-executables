@@ -245,6 +245,8 @@ function safe_extract() {
 			;;
 	esac
 
+	chmod -R u+w "$stage_dir" 2>/dev/null || true
+
 	if find "$stage_dir" -type l -print -quit | grep -q .; then
 		log "ERROR: $label contains a symlink entry after extraction; refusing to stage it"
 		rm -rf "$stage_dir"
@@ -466,6 +468,22 @@ function log_setup_diagnostics() {
 	log_external_reference_checks
 }
 
+function normalize_windows_path_separators() {
+	local package_file
+	local modified_count=0
+
+	while IFS= read -r package_file; do
+		if grep -q '\\' "$package_file" 2>/dev/null; then
+			sed -i 's/\\/\//g' "$package_file"
+			modified_count=$((modified_count + 1))
+		fi
+	done < <(find "$RUN_ROOT" -maxdepth 3 -type f \( -name "*.dis" -o -name "*.disv" -o -name "*.disu" -o -name "*.npf" -o -name "*.sto" -o -name "*.ic" -o -name "*.rcha" -o -name "*.rch" -o -name "*.wel" -o -name "*.drn" -o -name "*.riv" -o -name "*.ghb" -o -name "*.csub" -o -name "*.ims" -o -name "*.tdis" -o -name "*.nam" \))
+
+	if ((modified_count > 0)); then
+		log "Normalized Windows-style backslash path separators to forward slashes in $modified_count MF6 package file(s)"
+	fi
+}
+
 function log_solver_failure_summary() {
 	local lst_file
 	local has_lst=0
@@ -505,6 +523,7 @@ function prepare_run() {
 	flatten_support_inputs
 	normalize_support_slot_filenames
 	normalize_array_data_layout
+	normalize_windows_path_separators
 }
 
 function run_modflow_simulation() {

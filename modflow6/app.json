@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.4c084b8",
+  "version": "0.0.5f35915",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-4c084b8",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-5f35915",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,

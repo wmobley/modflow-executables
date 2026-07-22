@@ -178,6 +178,8 @@ function safe_extract() {
 			;;
 	esac
 
+	chmod -R u+w "$stage_dir" 2>/dev/null || true
+
 	if find "$stage_dir" -type l -print -quit | grep -q .; then
 		log "ERROR: $label contains a symlink entry after extraction; refusing to stage it"
 		rm -rf "$stage_dir"
