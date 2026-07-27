@@ -1,0 +1,200 @@
+{
+  "_about": "Good metadata for registering the MODFLOW engines into the MINT v2 model catalog. register_to_mint.py merges this with each variant's app.json (image, fileInputs, appArgs) to build Software -> SoftwareVersion -> ModelConfiguration -> Setup payloads. Per-package INPUTS are derived from app.json fileInputs; OUTPUTS + parameters + regions/GAMs come from here.",
+
+  "software": {
+    "slug": "MODFLOW",
+    "label": "MODFLOW",
+    "description": "The USGS MODFLOW family of modular, finite-difference groundwater flow models. A single Software grouping the supported engine versions (MODFLOW 6, MODFLOW-USG, MODFLOW-2000, MODFLOW-96), each packaged as a containerized Tapis app runnable on TACC.",
+    "keywords": ["groundwater", "hydrology", "finite-difference", "subsurface flow", "USGS", "MODFLOW"],
+    "license": "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
+    "website": "https://www.usgs.gov/mission-areas/water-resources/science/modflow-and-related-programs",
+    "authors": [
+      {"slug": "person-william-mobley", "name": "William Mobley", "orcid": "https://orcid.org/0000-0003-1783-0599", "affiliation": "Texas Advanced Computing Center"},
+      {"slug": "person-maximiliano-osorio", "name": "Maximiliano Osorio", "orcid": "https://orcid.org/0000-0002-3611-6510"},
+      {"slug": "person-suzanne-pierce", "name": "Suzanne Pierce", "orcid": "https://orcid.org/0000-0002-3050-1987", "affiliation": "Texas Advanced Computing Center"}
+    ]
+  },
+
+  "package_labels": {
+    "nam": "Name file (lists active packages and unit numbers)",
+    "mfsim.nam": "Simulation name file",
+    "model.nam": "Model name file",
+    "tdis": "Temporal discretization (TDIS)",
+    "ims": "Iterative Model Solution (IMS)",
+    "dis": "Structured discretization (DIS)",
+    "disv": "Vertex discretization (DISV)",
+    "disu": "Unstructured discretization (DISU)",
+    "discret": "Discretization",
+    "ic": "Initial conditions (IC)",
+    "bas": "Basic package (BAS)",
+    "npf": "Node Property Flow (NPF)",
+    "bcf": "Block-Centered Flow (BCF)",
+    "lpf": "Layer Property Flow (LPF)",
+    "sto": "Storage (STO)",
+    "oc": "Output Control (OC)",
+    "wel": "Well (WEL)",
+    "rch": "Recharge (RCH)",
+    "rcha": "Recharge array (RCHA)",
+    "drn": "Drain (DRN)",
+    "riv": "River (RIV)",
+    "ghb": "General-Head Boundary (GHB)",
+    "chd": "Constant-Head (CHD)",
+    "evt": "Evapotranspiration (EVT)",
+    "csub": "Skeletal storage / subsidence (CSUB)",
+    "obs": "Observations (OBS)",
+    "sms": "Sparse Matrix Solver (SMS)",
+    "gnc": "Ghost-Node Correction (GNC)",
+    "hfb": "Horizontal Flow Barrier (HFB)",
+    "gmg": "Geometric Multigrid solver (GMG)",
+    "str": "Streamflow Routing (STR)",
+    "res": "Reservoir (RES)",
+    "sor": "Slice-Successive Over-Relaxation solver (SOR)",
+    "sip": "Strongly Implicit Procedure solver (SIP)",
+    "support": "Auxiliary support file (referenced by a package)",
+    "simulation-archive": "Full simulation bundle (zip of all input files)"
+  },
+
+  "_svo_about": "Standard variables use SVO/CSDMS object__quantity names (double underscore between Phenomenon object and Property quantity). To match the catalog convention, each StandardVariable is minted under the catalog namespace https://w3id.org/okn/i/mint/<name> with same_as -> the canonical SVO IRI https://www.geoscienceontology.org/svo/svl/variable/<name>. reuse_existing=true means the variable already existed in the catalog (head, storativity) and is reused rather than duplicated. svo_bindings attaches a StandardVariable + Unit (VariablePresentation) to the meaningful MODFLOW I/O by package/output code; file-bundle packages (nam/dis/oc/support) are left unbound.",
+
+  "standard_variables": [
+    {"name": "groundwater__hydraulic_head", "label": "groundwater__hydraulic_head", "description": "Hydraulic head (potentiometric surface elevation) of groundwater.", "reuse_existing": true},
+    {"name": "groundwater__hydraulic_head_drawdown", "label": "groundwater__hydraulic_head_drawdown", "description": "Decline in groundwater hydraulic head relative to the initial/reference head."},
+    {"name": "aquifer_water__volume_flow_rate", "label": "aquifer_water__volume_flow_rate", "description": "Volumetric flow rate of water through the aquifer (cell-by-cell groundwater flow budget term)."},
+    {"name": "aquifer__hydraulic_conductivity", "label": "aquifer__hydraulic_conductivity", "description": "Saturated hydraulic conductivity of the aquifer porous medium."},
+    {"name": "land_subsurface_water__recharge_volume_flux", "label": "land_subsurface_water__recharge_volume_flux", "description": "Volume flux (per unit area, per time) of water recharging the saturated subsurface."},
+    {"name": "groundwater_well__pumping_volume_flow_rate", "label": "groundwater_well__pumping_volume_flow_rate", "description": "Volumetric pumping (withdrawal/injection) rate at a groundwater well."},
+    {"name": "aquifer__storativity", "label": "aquifer__storativity", "description": "Storativity (storage coefficient) of the aquifer.", "reuse_existing": true},
+    {"name": "land_surface_water__evapotranspiration_volume_flux", "label": "land_surface_water__evapotranspiration_volume_flux", "description": "Volume flux of water removed by evapotranspiration at the land surface."}
+  ],
+
+  "units": [
+    {"slug": "meter", "label": "m"},
+    {"slug": "meter_per_day", "label": "m/day"},
+    {"slug": "cubic_meter_per_day", "label": "m^3/day"},
+    {"slug": "dimensionless", "label": "1"}
+  ],
+
+  "svo_bindings": {
+    "hds":    {"variable": "groundwater__hydraulic_head", "unit": "meter", "long_name": "simulated hydraulic head", "short_name": "head"},
+    "heads":  {"variable": "groundwater__hydraulic_head", "unit": "meter", "long_name": "simulated hydraulic head", "short_name": "head"},
+    "ddn":    {"variable": "groundwater__hydraulic_head_drawdown", "unit": "meter", "long_name": "simulated drawdown", "short_name": "drawdown"},
+    "ddown":  {"variable": "groundwater__hydraulic_head_drawdown", "unit": "meter", "long_name": "simulated drawdown", "short_name": "drawdown"},
+    "cbc":    {"variable": "aquifer_water__volume_flow_rate", "unit": "cubic_meter_per_day", "long_name": "cell-by-cell flow budget", "short_name": "budget"},
+    "budget": {"variable": "aquifer_water__volume_flow_rate", "unit": "cubic_meter_per_day", "long_name": "cell-by-cell flow budget", "short_name": "budget"},
+    "npf":    {"variable": "aquifer__hydraulic_conductivity", "unit": "meter_per_day", "long_name": "node property flow hydraulic conductivity", "short_name": "K"},
+    "lpf":    {"variable": "aquifer__hydraulic_conductivity", "unit": "meter_per_day", "long_name": "layer property flow hydraulic conductivity", "short_name": "K"},
+    "bcf":    {"variable": "aquifer__hydraulic_conductivity", "unit": "meter_per_day", "long_name": "block-centered flow hydraulic conductivity", "short_name": "K"},
+    "rch":    {"variable": "land_subsurface_water__recharge_volume_flux", "unit": "meter_per_day", "long_name": "recharge volume flux", "short_name": "recharge"},
+    "rcha":   {"variable": "land_subsurface_water__recharge_volume_flux", "unit": "meter_per_day", "long_name": "recharge array volume flux", "short_name": "recharge"},
+    "wel":    {"variable": "groundwater_well__pumping_volume_flow_rate", "unit": "cubic_meter_per_day", "long_name": "well pumping rate", "short_name": "pumping"},
+    "ic":     {"variable": "groundwater__hydraulic_head", "unit": "meter", "long_name": "initial hydraulic head", "short_name": "head0"},
+    "bas":    {"variable": "groundwater__hydraulic_head", "unit": "meter", "long_name": "basic package starting head (STRT)", "short_name": "head0"},
+    "chd":    {"variable": "groundwater__hydraulic_head", "unit": "meter", "long_name": "constant/specified head", "short_name": "chd_head"},
+    "sto":    {"variable": "aquifer__storativity", "unit": "dimensionless", "long_name": "aquifer storativity", "short_name": "S"},
+    "evt":    {"variable": "land_surface_water__evapotranspiration_volume_flux", "unit": "meter_per_day", "long_name": "evapotranspiration volume flux", "short_name": "ET"}
+  },
+
+  "variants": {
+    "modflow6": {
+      "dir": "modflow6",
+      "version_slug": "modflow6",
+      "version_id": "6.6.3",
+      "label": "MODFLOW 6",
+      "description": "MODFLOW 6 — the current core USGS modular hydrologic model. Object-oriented framework supporting structured (DIS), vertex (DISV), and unstructured (DISU) grids and multi-model simulations. Driven by the mfsim.nam simulation name file.",
+      "usage_notes": "Container entrypoint runs `mf6` in the staged simulation directory. Provide a full simulation.zip, or individual package files; missing files fall back to an optional baseline data directory.",
+      "source_code": "https://github.com/MODFLOW-USGS/modflow6",
+      "website": "https://www.usgs.gov/software/modflow-6-usgs-modular-hydrologic-model",
+      "binary": "mf6",
+      "namefile": "mfsim.nam",
+      "default_dir_param": "mf6DefaultDir",
+      "reclassify_as_output": [],
+      "outputs": [
+        {"code": "lst", "ext": "lst", "label": "Listing file (run log)"},
+        {"code": "hds", "ext": "hds", "label": "Simulated heads (binary)"},
+        {"code": "cbc", "ext": "cbc", "label": "Cell-by-cell flow budget (binary)"},
+        {"code": "obs", "ext": "csv", "label": "Observation output"}
+      ],
+      "setups": []
+    },
+
+    "modflow-usg": {
+      "dir": "modflow-usg",
+      "version_slug": "modflow_usg",
+      "version_id": "1.5",
+      "label": "MODFLOW-USG",
+      "description": "MODFLOW-USG (UnStructured Grid) — supports control-volume finite-difference grids with the Sparse Matrix Solver (SMS) and Ghost-Node Correction (GNC). Uses classic *.nam name files.",
+      "usage_notes": "Container runs `mfusg model.nam`. USG-specific packages include SMS and GNC.",
+      "source_code": "https://github.com/MODFLOW-ORG/modflow-usg",
+      "website": "https://www.usgs.gov/software/modflow-usg-unstructured-grid-version-modflow-simulating-groundwater-flow-and-tightly",
+      "binary": "mfusg",
+      "namefile": "model.nam",
+      "default_dir_param": "mfusgDefaultDir",
+      "reclassify_as_output": [],
+      "outputs": [
+        {"code": "lst", "ext": "lst", "label": "Listing file (run log)"},
+        {"code": "hds", "ext": "hds", "label": "Simulated heads (binary)"},
+        {"code": "cbc", "ext": "cbc", "label": "Cell-by-cell flow budget (binary)"}
+      ],
+      "setups": [
+        {"slug": "carrizo-wilcox-central", "label": "MODFLOW-USG — Carrizo-Wilcox (central) GAM",
+         "region": "Carrizo-Wilcox Aquifer (central), Texas",
+         "baseline_dir": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/Carrizo-Wilcox-central/gmv-modflow-usg-Modified"}
+      ]
+    },
+
+    "modflow-2000": {
+      "dir": "modflow-2000",
+      "version_slug": "modflow_2000",
+      "version_id": "1.19",
+      "label": "MODFLOW-2000",
+      "description": "MODFLOW-2000 — legacy modular three-dimensional finite-difference groundwater model with Block-Centered Flow (BCF), the Geometric Multigrid solver (GMG), and Streamflow Routing (STR). Uses classic *.nam name files.",
+      "usage_notes": "Container runs `mf2000 model.nam`. Primary entrypoint for the target GAM is ygjk_tr.nam.",
+      "source_code": "https://github.com/MODFLOW-ORG/executables",
+      "website": "https://www.usgs.gov/software/modflow-2000-usgs-modular-groundwater-model",
+      "binary": "mf2000",
+      "namefile": "model.nam",
+      "default_dir_param": "mf2000DefaultDir",
+      "reclassify_as_output": [],
+      "outputs": [
+        {"code": "lst", "ext": "lst", "label": "Listing file (run log)"},
+        {"code": "hds", "ext": "hds", "label": "Simulated heads (binary)"},
+        {"code": "cbc", "ext": "cbc", "label": "Cell-by-cell flow budget (binary)"}
+      ],
+      "setups": [
+        {"slug": "yegua-jackson", "label": "MODFLOW-2000 — Yegua-Jackson GAM (CD-2)",
+         "region": "Yegua-Jackson Aquifer, Texas",
+         "baseline_dir": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/Yequa_Jackson/Yegua_Jackson_Model_Only/CD-2_ygjk_model/Modflow_2000"}
+      ]
+    },
+
+    "modflow-96": {
+      "dir": "modflow-96",
+      "version_slug": "modflow_96",
+      "version_id": "3.3",
+      "label": "MODFLOW-96",
+      "description": "MODFLOW-96 — the legacy USGS modular model (pre-2000 conventions). Compiled from the official USGS source archive; name file is supplied via stdin. Package data files use the legacy *.dat layout.",
+      "usage_notes": "Container runs `mf96` with the name file piped on stdin. Legacy *.dat package files; trnt_h_ss.nam is a typical entrypoint.",
+      "source_code": "https://water.usgs.gov/software/code/ground_water/modflow/UNIX/modflw96.3_3.source.tar.gz",
+      "website": "https://water.usgs.gov/ogw/modflow/",
+      "binary": "mf96",
+      "namefile": "model.nam",
+      "default_dir_param": "mf96DefaultDir",
+      "reclassify_as_output": ["mf96-output", "mf96-budget", "mf96-heads", "mf96-ddown", "mf96-mt3d-flo"],
+      "outputs": [
+        {"code": "lst", "ext": "lst", "label": "Listing file (run log)"},
+        {"code": "heads", "ext": "dat", "label": "Simulated heads (heads.dat)"},
+        {"code": "budget", "ext": "dat", "label": "Cell-by-cell budget (budget.dat)"},
+        {"code": "ddown", "ext": "dat", "label": "Drawdown (ddown.dat)"},
+        {"code": "mt3d", "ext": "flo", "label": "MT3D flow-transport link (mt3d.flo)"}
+      ],
+      "setups": [
+        {"slug": "trinity-hill-country-ststate", "label": "MODFLOW-96 — Trinity Hill Country GAM (steady state)",
+         "region": "Trinity Aquifer (Hill Country), Texas",
+         "baseline_dir": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/Trinity_hill_country/Trinity_hill_country_model_only/modfl_96/ststate"},
+        {"slug": "trinity-hill-country-trans", "label": "MODFLOW-96 — Trinity Hill Country GAM (transient)",
+         "region": "Trinity Aquifer (Hill Country), Texas",
+         "baseline_dir": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/Trinity_hill_country/Trinity_hill_country_model_only/modfl_96/trans"}
+      ]
+    }
+  }
+}
