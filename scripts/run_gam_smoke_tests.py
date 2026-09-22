@@ -245,11 +245,13 @@ class TokenBox:
 
     def __init__(self) -> None:
         self._static_token = os.environ.get("TAPIS_TOKEN", "").strip()
-        self.username = os.environ.get("TAPIS_USERNAME", "").strip() or input("Tapis username: ").strip()
-        self.password = os.environ.get("TAPIS_PASSWORD", "") or getpass("Tapis password: ")
+        self.username = ""
+        self.password = ""
         self.token = self._static_token or ""
         self.expires_at: float | None = None
         if not self._static_token:
+            self.username = os.environ.get("TAPIS_USERNAME", "").strip() or input("Tapis username: ").strip()
+            self.password = os.environ.get("TAPIS_PASSWORD", "") or getpass("Tapis password: ")
             self._authenticate()
 
     def _authenticate(self) -> None:
