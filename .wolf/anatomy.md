@@ -104,11 +104,13 @@
 ## scripts/
 
 - `.DS_Store` (~1640 tok)
-- `check_apps.py` — Check that the three MODFLOW Tapis apps are registered, enabled, and on the (~3088 tok)
+- `check_apps.py` — Check that the four MODFLOW Tapis apps are registered, enabled, and on the (~3300 tok)
 - `models_metadata.json` (~4068 tok)
 - `register_forecast_to_mint.py` — Register the SUBSIDE subsidence forecast as a MINT model, SVO-typed so its (~3877 tok)
 - `register_gams_to_ckan.py` — Register TWDB GAM input packages to CKAN. (~5181 tok)
 - `register_to_mint.py` — Register the MODFLOW engines into the MINT v2 model catalog with full metadata (~7315 tok)
+- `test_register_to_mint.py` — Read-only regression tests for MODFLOW MINT registration payloads (~2500 tok)
+- `test_app_runtime.py` — Local archive-staging and package-override smoke tests using fake solver executables.
 - `update_register_apps.py` — Update MODFLOW app image tags and register app versions in Tapis. (~1232 tok)
 
 ## scripts/components/
@@ -117,3 +119,8 @@
 - `modflow-96.json` (~923 tok)
 - `modflow-usg.json` (~1002 tok)
 - `modflow6.json` (~1355 tok)
+
+## docs/
+
+- `app-runtime.md` — Shared archive, override, and local verification contract.
+- `design/2026-09-21-runnable-modflow-apps.md` — Design for runnable archive-based MODFLOW apps.

@@ -1,8 +1,8 @@
 {
   "id": "modflow-usg-simulation",
-  "version": "0.0.09f0070",
+  "version": "0.0.971622c",
   "name": "MODFLOW-USG",
-  "softwareImage": "docker://ghcr.io/wmobley/modflow-usg:sha-09f0070",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow-usg:sha-971622c",
   "execSystemId": "ls6",
   "execSystemLogicalQueue": "vm-small",
   "inputs": [
@@ -10,7 +10,7 @@
       "id": "mfusg-simulation-archive",
       "role": "input",
       "path": "simulation.zip",
-      "optional": true
+      "optional": false
     },
     {
       "id": "mfusg-nam",

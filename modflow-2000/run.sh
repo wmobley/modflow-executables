@@ -166,7 +166,16 @@ function safe_extract() {
 	log "Unpacking $label ($archive_format) into a staging area for inspection"
 	case "$archive_format" in
 		zip)
-			unzip -q "$archive_path" -d "$stage_dir"
+			if ! unzip -q "$archive_path" -d "$stage_dir" 2>/dev/null; then
+				log "unzip failed for $label, falling back to 7z"
+				rm -rf "$stage_dir"
+				mkdir -p "$stage_dir"
+				if ! 7z x -y -o"$stage_dir" "$archive_path" > /dev/null 2>&1; then
+					log "ERROR: both unzip and 7z failed for $label"
+					rm -rf "$stage_dir"
+					return 1
+				fi
+			fi
 			;;
 		7z)
 			7z x -y -o"$stage_dir" "$archive_path" > /dev/null
@@ -246,7 +255,7 @@ function stage_user_inputs() {
 		safe_extract "$sim_archive" "$RUN_ROOT" "simulation.zip"
 	else
 		shopt -s nullglob
-		archives=("$INPUTS_DIR"/*.zip)
+		archives=("$INPUTS_DIR"/*.zip "$INPUTS_DIR"/*.7z "$INPUTS_DIR"/*.zipx)
 		shopt -u nullglob
 		if ((${#archives[@]} > 0)); then
 			for archive in "${archives[@]}"; do

@@ -1,6 +1,6 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.09f0070",
+  "version": "0.0.971622c",
   "description": "Run a MODFLOW 6 simulation on TACC using the MODFLOW 6 binary built inside the container image.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-09f0070",
+  "containerImage": "docker://ghcr.io/wmobley/modflow6:sha-971622c",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -96,8 +96,8 @@
     "fileInputs": [
       {
         "name": "mf6-simulation-archive",
-        "description": "Optional ZIP archive containing a MODFLOW 6 simulation or supporting files such as array data.",
-        "inputMode": "OPTIONAL",
+        "description": "Required ZIP archive containing a MODFLOW 6 simulation or supporting files such as array data.",
+        "inputMode": "REQUIRED",
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "simulation.zip"
@@ -213,6 +213,14 @@
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "provided/model.rcha"
+      },
+      {
+        "name": "mf6-rchb",
+        "description": "Optional second recharge package file using the RCHB convention.",
+        "inputMode": "OPTIONAL",
+        "autoMountLocal": true,
+        "sourceUrl": null,
+        "targetPath": "provided/model.rchb"
       },
       {
         "name": "mf6-drn",

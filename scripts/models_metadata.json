@@ -35,6 +35,7 @@
     "wel": "Well (WEL)",
     "rch": "Recharge (RCH)",
     "rcha": "Recharge array (RCHA)",
+    "rchb": "Recharge array (RCHB)",
     "drn": "Drain (DRN)",
     "riv": "River (RIV)",
     "ghb": "General-Head Boundary (GHB)",
@@ -54,7 +55,7 @@
     "simulation-archive": "Full simulation bundle (zip of all input files)"
   },
 
-  "_svo_about": "Standard variables use SVO/CSDMS object__quantity names (double underscore between Phenomenon object and Property quantity). To match the catalog convention, each StandardVariable is minted under the catalog namespace https://w3id.org/okn/i/mint/<name> with same_as -> the canonical SVO IRI https://www.geoscienceontology.org/svo/svl/variable/<name>. reuse_existing=true means the variable already existed in the catalog (head, storativity) and is reused rather than duplicated. svo_bindings attaches a StandardVariable + Unit (VariablePresentation) to the meaningful MODFLOW I/O by package/output code; file-bundle packages (nam/dis/oc/support) are left unbound.",
+  "_svo_about": "Standard variables use SVO/CSDMS object__quantity names (double underscore between Phenomenon object and Property quantity). To match the live catalog convention, each StandardVariable is minted under the catalog namespace https://w3id.org/okn/i/mint/<name> with same_as -> the canonical SVO IRI http://www.geoscienceontology.org/svo/svl/variable#<name>. reuse_existing=true means the variable already existed in the catalog (head, storativity) and is reused rather than duplicated. svo_bindings attaches a StandardVariable + Unit (VariablePresentation) to the meaningful MODFLOW I/O by package/output code; file-bundle packages (nam/dis/oc/support) are left unbound.",
 
   "standard_variables": [
     {"name": "groundwater__hydraulic_head", "label": "groundwater__hydraulic_head", "description": "Hydraulic head (potentiometric surface elevation) of groundwater.", "reuse_existing": true},
@@ -86,6 +87,7 @@
     "bcf":    {"variable": "aquifer__hydraulic_conductivity", "unit": "meter_per_day", "long_name": "block-centered flow hydraulic conductivity", "short_name": "K"},
     "rch":    {"variable": "land_subsurface_water__recharge_volume_flux", "unit": "meter_per_day", "long_name": "recharge volume flux", "short_name": "recharge"},
     "rcha":   {"variable": "land_subsurface_water__recharge_volume_flux", "unit": "meter_per_day", "long_name": "recharge array volume flux", "short_name": "recharge"},
+    "rchb":   {"variable": "land_subsurface_water__recharge_volume_flux", "unit": "meter_per_day", "long_name": "recharge array volume flux (RCHB)", "short_name": "recharge"},
     "wel":    {"variable": "groundwater_well__pumping_volume_flow_rate", "unit": "cubic_meter_per_day", "long_name": "well pumping rate", "short_name": "pumping"},
     "ic":     {"variable": "groundwater__hydraulic_head", "unit": "meter", "long_name": "initial hydraulic head", "short_name": "head0"},
     "bas":    {"variable": "groundwater__hydraulic_head", "unit": "meter", "long_name": "basic package starting head (STRT)", "short_name": "head0"},
@@ -114,7 +116,11 @@
         {"code": "cbc", "ext": "cbc", "label": "Cell-by-cell flow budget (binary)"},
         {"code": "obs", "ext": "csv", "label": "Observation output"}
       ],
-      "setups": []
+      "setups": [
+        {"slug": "ntgam", "label": "MODFLOW 6 — Northern Trinity & Woodbine GAM (NTGAM) v3.01",
+         "region": "Northern Trinity & Woodbine Aquifer, Texas",
+         "baseline_dir": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/NTGAM/ntgam_v301/NTGAM"}
+      ]
     },
 
     "modflow-usg": {

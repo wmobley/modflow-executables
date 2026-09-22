@@ -233,7 +233,16 @@ function safe_extract() {
 	log "Unpacking $label ($archive_format) into a staging area for inspection"
 	case "$archive_format" in
 		zip)
-			unzip -q "$archive_path" -d "$stage_dir"
+			if ! unzip -q "$archive_path" -d "$stage_dir" 2>/dev/null; then
+				log "unzip failed for $label, falling back to 7z"
+				rm -rf "$stage_dir"
+				mkdir -p "$stage_dir"
+				if ! 7z x -y -o"$stage_dir" "$archive_path" > /dev/null 2>&1; then
+					log "ERROR: both unzip and 7z failed for $label"
+					rm -rf "$stage_dir"
+					return 1
+				fi
+			fi
 			;;
 		7z)
 			7z x -y -o"$stage_dir" "$archive_path" > /dev/null
@@ -313,7 +322,7 @@ function stage_user_inputs() {
 		safe_extract "$sim_archive" "$RUN_ROOT" "simulation.zip"
 	else
 		shopt -s nullglob
-		archives=("$INPUTS_DIR"/*.zip)
+		archives=("$INPUTS_DIR"/*.zip "$INPUTS_DIR"/*.7z "$INPUTS_DIR"/*.zipx)
 		shopt -u nullglob
 		if ((${#archives[@]} > 0)); then
 			for archive in "${archives[@]}"; do
@@ -415,7 +424,7 @@ function log_external_reference_checks() {
 				done
 			fi
 		done <"$package_file"
-	done < <(find "$RUN_ROOT" -maxdepth 3 -type f \( -name "*.dis" -o -name "*.disv" -o -name "*.disu" -o -name "*.npf" -o -name "*.sto" -o -name "*.ic" -o -name "*.rcha" -o -name "*.rch" -o -name "*.wel" -o -name "*.drn" -o -name "*.riv" -o -name "*.ghb" -o -name "*.csub" -o -name "*.ims" -o -name "*.tdis" -o -name "*.nam" \) | sort)
+	done < <(find "$RUN_ROOT" -maxdepth 3 -type f \( -name "*.dis" -o -name "*.disv" -o -name "*.disu" -o -name "*.npf" -o -name "*.sto" -o -name "*.ic" -o -name "*.rcha" -o -name "*.rch" -o -name "*.rchb" -o -name "*.wel" -o -name "*.drn" -o -name "*.riv" -o -name "*.ghb" -o -name "*.csub" -o -name "*.ims" -o -name "*.tdis" -o -name "*.nam" \) | sort)
 
 	if [[ ! -s "$ref_tmp" ]]; then
 		log "Setup check: no OPEN/CLOSE or FILEIN references detected in scanned package files"
@@ -477,7 +486,7 @@ function normalize_windows_path_separators() {
 			sed -i 's/\\/\//g' "$package_file"
 			modified_count=$((modified_count + 1))
 		fi
-	done < <(find "$RUN_ROOT" -maxdepth 3 -type f \( -name "*.dis" -o -name "*.disv" -o -name "*.disu" -o -name "*.npf" -o -name "*.sto" -o -name "*.ic" -o -name "*.rcha" -o -name "*.rch" -o -name "*.wel" -o -name "*.drn" -o -name "*.riv" -o -name "*.ghb" -o -name "*.csub" -o -name "*.ims" -o -name "*.tdis" -o -name "*.nam" \))
+	done < <(find "$RUN_ROOT" -maxdepth 3 -type f \( -name "*.dis" -o -name "*.disv" -o -name "*.disu" -o -name "*.npf" -o -name "*.sto" -o -name "*.ic" -o -name "*.rcha" -o -name "*.rch" -o -name "*.rchb" -o -name "*.wel" -o -name "*.drn" -o -name "*.riv" -o -name "*.ghb" -o -name "*.csub" -o -name "*.ims" -o -name "*.tdis" -o -name "*.nam" \))
 
 	if ((modified_count > 0)); then
 		log "Normalized Windows-style backslash path separators to forward slashes in $modified_count MF6 package file(s)"

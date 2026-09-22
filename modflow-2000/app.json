@@ -1,6 +1,6 @@
 {
   "id": "modflow-2000-simulation",
-  "version": "0.0.09f0070",
+  "version": "0.0.971622c",
   "description": "Run a MODFLOW-2000 simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-2000:sha-09f0070",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-2000:sha-971622c",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
@@ -96,8 +96,8 @@
     "fileInputs": [
       {
         "name": "mf2000-simulation-archive",
-        "description": "Optional ZIP archive containing a MODFLOW-2000 simulation or supporting files.",
-        "inputMode": "OPTIONAL",
+        "description": "Required ZIP archive containing a MODFLOW-2000 simulation or supporting files.",
+        "inputMode": "REQUIRED",
         "autoMountLocal": true,
         "sourceUrl": null,
         "targetPath": "simulation.zip"

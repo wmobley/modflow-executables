@@ -31,6 +31,11 @@ def is_unsafe_name(name: str) -> bool:
 
 
 def sniff_format(path: str) -> str:
+    # .zipx files are WinZip archives with advanced compression (LZMA, BZip2, etc.)
+    # that the standard `unzip` command cannot handle. Route them to 7z instead.
+    if path.lower().endswith(".zipx"):
+        return "7z"
+
     with open(path, "rb") as fh:
         header = fh.read(8)
     if header.startswith(SEVENZ_MAGIC):

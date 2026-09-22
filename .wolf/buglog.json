@@ -1,4 +1,41 @@
 {
   "version": 1,
-  "bugs": []
+  "bugs": [
+    {
+      "id": "bug-001",
+      "timestamp": "2026-09-21T12:20:00-05:00",
+      "error_message": "Patch verification failed while updating the MODFLOW archive input manifests because one path was specified without the modflow-executables directory and the expected MODFLOW-96 description did not match.",
+      "file": "modflow6/app.json; modflow-2000/app.json; modflow-96/app.json; modflow-usg/app.json",
+      "root_cause": "The multi-file patch used an incorrect absolute path and an initially mismatched description string.",
+      "fix": "Re-read the exact manifest strings and applied a corrected focused patch.",
+      "tags": ["patch", "manifest", "registration"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T12:20:00-05:00"
+    },
+    {
+      "id": "bug-002",
+      "timestamp": "2026-09-21T12:25:00-05:00",
+      "error_message": "MINT problem formulation shows no matching datasets for the MODFLOW 6 simulation archive input.",
+      "file": "scripts/register_gams_to_ckan.py; scripts/models_metadata.json",
+      "root_cause": "The archive resource creation path does not set resource-level mint_standard_variables, and simulation-archive has no generic SVO binding; the adapter skips resources without mapped resource annotations.",
+      "fix": "Archive requiredness was fixed separately; evidence-backed archive SVO annotations remain planned for CKAN reconciliation.",
+      "tags": ["ckan", "mint", "archive", "svo", "discovery"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T12:25:00-05:00"
+    },
+    {
+      "id": "bug-003",
+      "timestamp": "2026-09-21T19:44:54-05:00",
+      "error_message": "The local runtime smoke test could not validate any MODFLOW app because the host selected an incompatible Intel-only /usr/local/bin/python3 on Apple Silicon.",
+      "file": "scripts/test_app_runtime.py; modflow6/run.sh; modflow-2000/run.sh; modflow-96/run.sh; modflow-usg/run.sh",
+      "root_cause": "The test inherited the host PATH, while the runner correctly invokes the python3 available in the container image.",
+      "fix": "The local harness now uses a container-like PATH containing the system Python and documents that the test covers staging rather than host binary selection.",
+      "tags": ["runtime", "testing", "python", "macos"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T19:44:54-05:00"
+    }
+  ]
 }

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Check that the three MODFLOW Tapis apps are registered, enabled, and on the
+"""Check that the four MODFLOW Tapis apps are registered, enabled, and on the
 expected image version. Optionally submit a smoke-test job for each.
 
 Usage:
     TAPIS_TOKEN=... python3 check_apps.py
     TAPIS_TOKEN=... python3 check_apps.py --submit   # also submits test jobs
     TAPIS_TOKEN=... python3 check_apps.py --app modflow-usg-simulation
+    TAPIS_TOKEN=... python3 check_apps.py --submit --archive-url tapis://.../simulation.zip
 
     # Get a token via username/password if TAPIS_TOKEN is not set:
     TAPIS_USERNAME=wmobley TAPIS_PASSWORD=... python3 check_apps.py
@@ -30,8 +31,19 @@ EXPECTED_ALLOCATION = "PT2050-DataX"
 
 APPS = [
     {
+        "id":          "modflow6-simulation",
+        "image":       "modflow6",
+        "archive_input": "mf6-simulation-archive",
+        "baseline_dir": f"{MODEL_ROOT}/NTGAM/ntgam_v301/NTGAM",
+        "test_inputs": {
+            "mf6-wel": "model.wel",
+            "mf6-rcha": "model.rcha",
+        },
+    },
+    {
         "id":          "modflow-usg-simulation",
         "image":       "modflow-usg",
+        "archive_input": "mfusg-simulation-archive",
         "baseline_dir": f"{MODEL_ROOT}/Carrizo-Wilcox-central/gmv-modflow-usg-Modified",
         "test_inputs": {
             "mfusg-bas":        "gma12.bas",
@@ -56,6 +68,7 @@ APPS = [
     {
         "id":          "modflow-2000-simulation",
         "image":       "modflow-2000",
+        "archive_input": "mf2000-simulation-archive",
         "baseline_dir": (
             f"{MODEL_ROOT}/Yequa_Jackson/Yegua_Jackson_Model_Only"
             "/CD-2_ygjk_model/Modflow_2000"
@@ -78,6 +91,7 @@ APPS = [
     {
         "id":          "modflow-96-simulation",
         "image":       "modflow-96",
+        "archive_input": "mf96-simulation-archive",
         "baseline_dir": (
             f"{MODEL_ROOT}/Trinity_hill_country"
             "/Trinity_hill_country_model_only/modfl_96/ststate"
@@ -164,7 +178,8 @@ def check_app(app: dict) -> tuple[bool, dict]:
     ok_image     = app["image"] in image
     alloc_ok     = f"-A {EXPECTED_ALLOCATION}" in _scheduler_option_args(result)
     reg_inputs   = _app_file_input_names(result)
-    missing_ins  = sorted(set(app["test_inputs"]) - reg_inputs)
+    expected_inputs = set(app["test_inputs"]) | {app["archive_input"]}
+    missing_ins  = sorted(expected_inputs - reg_inputs)
 
     status = "OK  " if (enabled and ok_image and not missing_ins) else "WARN"
     print(f"  {status}  {app_id}")
@@ -186,7 +201,7 @@ def check_app(app: dict) -> tuple[bool, dict]:
 # ---------------------------------------------------------------------------
 # Job submission (smoke test)
 # ---------------------------------------------------------------------------
-def submit_job(app: dict, app_def: dict) -> str | None:
+def submit_job(app: dict, app_def: dict, archive_url: str) -> str | None:
     """Submit using the version actually registered in Tapis."""
     app_id   = app["id"]
     base_dir = app["baseline_dir"]
@@ -200,6 +215,10 @@ def submit_job(app: dict, app_def: dict) -> str | None:
         }
         for name, fname in app["test_inputs"].items()
     ]
+    file_inputs.insert(0, {
+        "name": app["archive_input"],
+        "sourceUrl": archive_url,
+    })
 
     body: dict = {
         "name":       f"check-{app_id}",
@@ -262,6 +281,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--app", dest="apps", action="append",
                     help="Limit to specific app IDs (repeat to select multiple)")
     ap.add_argument("--base-url", default=BASE_URL)
+    ap.add_argument(
+        "--archive-url",
+        help="Archive source URL used for every remote smoke job (required with --submit)",
+    )
     args = ap.parse_args(argv)
 
     BASE_URL    = args.base_url
@@ -282,15 +305,18 @@ def main(argv: list[str] | None = None) -> int:
         ok, app_def = check_app(app)
         all_ok = all_ok and ok
 
-        if args.submit and ok:
+        if args.submit and ok and args.archive_url:
             print(f"    Submitting smoke-test job for {app['id']} …")
-            uuid = submit_job(app, app_def)
+            uuid = submit_job(app, app_def, args.archive_url)
             if uuid:
                 result = poll_job(uuid)
                 mark = "PASS" if result == "FINISHED" else "FAIL"
                 print(f"    {mark}  job ended: {result}")
                 if result != "FINISHED":
                     all_ok = False
+        elif args.submit and ok and not args.archive_url:
+            print("    SKIP  remote smoke test: --archive-url is required")
+            all_ok = False
         print()
 
     print("Result:", "ALL OK" if all_ok else "ISSUES FOUND")

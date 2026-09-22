@@ -1,8 +1,8 @@
 {
   "id": "modflow6-simulation",
-  "version": "0.0.09f0070",
+  "version": "0.0.971622c",
   "name": "MODFLOW 6",
-  "softwareImage": "docker://ghcr.io/wmobley/modflow6:sha-09f0070",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow6:sha-971622c",
   "execSystemId": "ls6",
   "execSystemLogicalQueue": "vm-small",
   "inputs": [
@@ -10,7 +10,7 @@
       "id": "mf6-simulation-archive",
       "role": "input",
       "path": "simulation.zip",
-      "optional": true
+      "optional": false
     },
     {
       "id": "mf6-sim-nam",
@@ -94,6 +94,12 @@
       "id": "mf6-rcha",
       "role": "input",
       "path": "provided/model.rcha",
+      "optional": true
+    },
+    {
+      "id": "mf6-rchb",
+      "role": "input",
+      "path": "provided/model.rchb",
       "optional": true
     },
     {

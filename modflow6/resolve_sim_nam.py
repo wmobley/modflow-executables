@@ -42,6 +42,7 @@ PACKAGE_MAP = {
     ".wel": "WEL6",
     ".rch": "RCH6",
     ".rcha": "RCH6",
+    ".rchb": "RCH6",
     ".drn": "DRN6",
     ".riv": "RIV6",
     ".ghb": "GHB6",

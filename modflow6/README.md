@@ -1,4 +1,17 @@
-This template is the first in a [series of tutorials](#next-tutorials) that will guide you through the process of creating a cookbook and running it on TACC systems. From simple ones that run a command to more complex ones that run a Python using conda or a Jupyter Notebook.
+# MODFLOW 6 App
+
+This app runs MODFLOW 6 simulations on TACC. A complete `simulation.zip` is
+required; the runner validates and unpacks it before resolving `mfsim.nam`.
+Optional package files under `provided/` override matching archive files.
+
+Recharge overrides may be supplied as `model.rch`, `model.rcha`, or
+`model.rchb`; all are resolved as `RCH6` packages. Multiple recharge packages
+from an archive are retained when they use these conventions.
+
+See [`docs/app-runtime.md`](../docs/app-runtime.md) for the shared contract and
+local smoke-test commands.
+
+The remainder of this file contains the inherited cookbook-template notes.
 
 ## Requirements
 

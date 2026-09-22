@@ -2,6 +2,13 @@
 
 This folder contains the Tapis app that runs legacy MODFLOW-96-style models.
 
+Runtime contract:
+- `simulation.zip` is required and is unpacked before execution.
+- Optional `provided/rch.dat` and `provided/wel.dat` inputs override the
+  corresponding legacy package files from the archive or baseline.
+- The runner resolves or generates the legacy `*.nam` file and pipes it to
+  `mf96`.
+
 Current target models:
 - `Trinity_hill_country/Trinity_hill_country_model_only/modfl_96/ststate`
 - `Trinity_hill_country/Trinity_hill_country_model_only/modfl_96/trans`
