@@ -1,8 +1,8 @@
 {
   "id": "modflow-usg-simulation",
-  "version": "0.0.971622c",
+  "version": "0.0.febed09",
   "name": "MODFLOW-USG",
-  "softwareImage": "docker://ghcr.io/wmobley/modflow-usg:sha-971622c",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow-usg:sha-febed09",
   "execSystemId": "ls6",
   "execSystemLogicalQueue": "vm-small",
   "inputs": [

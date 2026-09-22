@@ -1,8 +1,8 @@
 {
   "id": "modflow-2000-simulation",
-  "version": "0.0.971622c",
+  "version": "0.0.febed09",
   "name": "MODFLOW-2000",
-  "softwareImage": "docker://ghcr.io/wmobley/modflow-2000:sha-971622c",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow-2000:sha-febed09",
   "execSystemId": "ls6",
   "execSystemLogicalQueue": "vm-small",
   "inputs": [

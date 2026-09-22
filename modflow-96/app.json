@@ -1,6 +1,6 @@
 {
   "id": "modflow-96-simulation",
-  "version": "0.0.971622c",
+  "version": "0.0.febed09",
   "description": "Run a MODFLOW-96 simulation on TACC using a cookbook-style Tapis application.",
   "owner": "${apiUserId}",
   "enabled": true,
@@ -9,7 +9,7 @@
   "runtimeOptions": [
     "SINGULARITY_RUN"
   ],
-  "containerImage": "docker://ghcr.io/wmobley/modflow-96:sha-971622c",
+  "containerImage": "docker://ghcr.io/wmobley/modflow-96:sha-febed09",
   "jobType": "BATCH",
   "maxJobs": -1,
   "maxJobsPerUser": -1,
