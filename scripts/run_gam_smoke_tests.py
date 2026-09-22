@@ -36,13 +36,19 @@ ARCHIVE_URL_ARG_BY_APP = {
     "modflow-2000-simulation": "mf2000ArchiveUrl",
     "modflow-96-simulation": "mf96ArchiveUrl",
 }
+ARCHIVE_FILE_INPUT_BY_APP = {
+    "modflow6-simulation": "mf6-simulation-archive",
+    "modflow-usg-simulation": "mfusg-simulation-archive",
+    "modflow-2000-simulation": "mf2000-simulation-archive",
+    "modflow-96-simulation": "mf96-simulation-archive",
+}
 
 # Confirmed download URLs — see docs/reference/2026-07-21-twdb-gam-modflow-versions.md
 GAM_TEST_CASES = [
     {
         "label": "ntgam",
         "app_id": "modflow6-simulation",
-        "app_version": "0.0.dc13cc2",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/trnt_n/trnt_n_v301/NTGAM_Final_model_2025.7z",
         "max_minutes": 240,
         "note": "Confirmed working 2026-07-21: FINISHED in 130.6 min (needs maxMinutes above the app default of 60).",
@@ -50,7 +56,7 @@ GAM_TEST_CASES = [
     {
         "label": "carrizo-wilcox-central",
         "app_id": "modflow-usg-simulation",
-        "app_version": "0.0.e5fea89",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/czwx_c/czwx_c_qcsp_v3.02_model_files.zip",
         "max_minutes": 240,
         "note": "Confirmed working 2026-07-21: FINISHED in 12.7 min. Joint Carrizo-Wilcox/Queen City/Sparta model, 712MB zipped.",
@@ -58,7 +64,7 @@ GAM_TEST_CASES = [
     {
         "label": "yegua-jackson",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.e5fea89",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ygjk/Yegua_Jackson_Model_Only.zip",
         "max_minutes": 240,
         "note": "Confirmed working 2026-07-21: FINISHED in 6.6 min, the fastest of the four.",
@@ -66,7 +72,7 @@ GAM_TEST_CASES = [
     {
         "label": "trinity-hill-country",
         "app_id": "modflow-96-simulation",
-        "app_version": "0.0.e5fea89",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/trnt_h/trnt_h_v3.01/Final/trnt_h_v3.01_Model_Files.7z",
         "max_minutes": 240,
         "note": "Confirmed working 2026-07-21: FINISHED in 3.6 min. Ran clean without the sibling Supplemental_Data.7z archive.",
@@ -86,7 +92,7 @@ GAM_TEST_CASES = [
     {
         "label": "edwards-bfz-northern",
         "app_id": "modflow-usg-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_n/ebfz_n_v2.1/ebfz_n_v2.1_ModelFiles.7z",
         "max_minutes": 180,
         "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 12.2 min. MODFLOW-USG beta, 22.5MB zipped / 2.5GB unzipped.",
@@ -94,7 +100,7 @@ GAM_TEST_CASES = [
     {
         "label": "edwards-bfz-barton-springs",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_b/Edwards_BFZ_Barton_Springs.zip",
         "max_minutes": 120,
         "note": (
@@ -107,7 +113,7 @@ GAM_TEST_CASES = [
     {
         "label": "edwards-bfz-san-antonio",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/ebfz_s/Edwards_BFZ_San_Antonio_GWSIM.zip",
         "max_minutes": 60,
         "note": (
@@ -120,7 +126,7 @@ GAM_TEST_CASES = [
     {
         "label": "edwards-trinity-plateau-pecos-valley",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/eddt_r/Edwards_Trinity_Plateau_Model_Only.zip",
         "max_minutes": 240,
         "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 86.4 min. 152MB zipped / 4.6GB unzipped.",
@@ -128,7 +134,7 @@ GAM_TEST_CASES = [
     {
         "label": "gulf-coast-central-southern",
         "app_id": "modflow-usg-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/glfc_c_s/July19_glfc_c_s_ModelFiles.7z",
         "max_minutes": 240,
         "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 12.7 min. 1.2GB zipped / 4.3GB unzipped.",
@@ -136,7 +142,7 @@ GAM_TEST_CASES = [
     {
         "label": "gulf-coast-northern",
         "app_id": "modflow6-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/glfc_n/glfc_n_v4.1/glfc_n_v4.1_model_files.zip",
         "max_minutes": 90,
         "note": (
@@ -153,7 +159,7 @@ GAM_TEST_CASES = [
     {
         "label": "seymour-and-blaine",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/symr/Seymour_Model_Only.zip",
         "max_minutes": 600,
         "note": (
@@ -180,7 +186,7 @@ GAM_TEST_CASES = [
     {
         "label": "lipan",
         "app_id": "modflow-96-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/lipn/Lipan_Model_Only.zip",
         "max_minutes": 90,
         "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 12.7 min. 92MB zipped / 880MB unzipped.",
@@ -188,7 +194,7 @@ GAM_TEST_CASES = [
     {
         "label": "nacatoch",
         "app_id": "modflow-2000-simulation",
-        "app_version": "0.0.09f0070",
+        "app_version": "0.0.febed09",
         "archive_url": "https://gw-models.s3.amazonaws.com/Download_GAMs/nctc/Nacatoch_Model_Only.zip",
         "max_minutes": 180,
         "note": "Confirmed working 2026-07-22 under 0.0.5f35915: FINISHED in 6.7 min. 76MB zipped / 3.3GB unzipped.",
@@ -297,6 +303,12 @@ def submit(box: TokenBox, case: dict) -> str:
             ],
         },
         "maxMinutes": case["max_minutes"],
+        "fileInputs": [
+            {
+                "name": ARCHIVE_FILE_INPUT_BY_APP[case["app_id"]],
+                "sourceUrl": case["archive_url"],
+            }
+        ],
     }
 
     for attempt in range(2):  # one retry after a forced token refresh on 401
