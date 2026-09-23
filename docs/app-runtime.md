@@ -14,7 +14,8 @@ declarations, while one of `model.rch`, `model.rcha`, or `model.rchb` replaces
 the active `RCH6` family. Supplying more than one recharge override is an
 error. Package-level observation files such as `*.drn.obs` and `*.riv.obs`
 remain referenced by their owning package and are not treated as model-level
-`OBS6` packages.
+`OBS6` packages; duplicate package-level entries already present in an
+explicit generated model name file are removed during resolution.
 
 MODFLOW 6 does not expose a host-specific `mf6DefaultDir` parameter and does
 not overlay a baseline directory. Its required `simulation.zip` is the only

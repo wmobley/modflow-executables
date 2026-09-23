@@ -53,6 +53,7 @@ PACKAGE_MAP = {
 }
 
 MODEL_OBSERVATION_NAMES = {"model.obs", "model-02.obs", "model-03.obs"}
+PACKAGE_OBSERVATION_SUFFIXES = {suffix.lstrip(".") for suffix in PACKAGE_MAP}
 OVERRIDE_NAMES = {
     "WEL6": ("model.wel",),
     "RCH6": ("model.rch", "model.rcha", "model.rchb"),
@@ -71,6 +72,11 @@ def _without_comment(line: str) -> str:
 
 def _relative_path(path: Path, base: Path) -> str:
     return Path(os.path.relpath(path, base)).as_posix()
+
+
+def is_package_observation_path(path: Path) -> bool:
+    name = path.name.lower()
+    return any(name.endswith(f".{suffix}.obs") for suffix in PACKAGE_OBSERVATION_SUFFIXES)
 
 
 def discover_overrides(run_root: Path) -> dict[str, Path]:
@@ -141,6 +147,7 @@ def override_model_name_file(model_nam_path: Path, overrides: dict[str, Path]) -
     in_packages = False
     inserted: set[str] = set()
     package_block_found = False
+    changed = False
 
     for line in lines:
         content = _without_comment(line)
@@ -161,7 +168,15 @@ def override_model_name_file(model_nam_path: Path, overrides: dict[str, Path]) -
             continue
 
         if in_packages and content:
-            package_type = content.split()[0].upper()
+            tokens = content.split()
+            package_type = tokens[0].upper()
+            if (
+                package_type == "OBS6"
+                and len(tokens) >= 2
+                and is_package_observation_path(Path(tokens[1]))
+            ):
+                changed = True
+                continue
             if package_type in overrides:
                 if package_type not in inserted:
                     indent = line[: len(line) - len(line.lstrip())]
@@ -177,10 +192,15 @@ def override_model_name_file(model_nam_path: Path, overrides: dict[str, Path]) -
         output_lines.append(line)
 
     if not package_block_found:
-        raise SystemExit(
-            f"Explicit model name file {model_nam_path} has no BEGIN PACKAGES section; "
-            "cannot apply WEL/RCH overrides safely."
-        )
+        if overrides:
+            raise SystemExit(
+                f"Explicit model name file {model_nam_path} has no BEGIN PACKAGES section; "
+                "cannot apply WEL/RCH overrides safely."
+            )
+        return model_nam_path
+
+    if not overrides and not changed:
+        return model_nam_path
 
     generated_model = model_nam_path.parent / "generated.model.nam"
     if generated_model == model_nam_path:
@@ -385,6 +405,13 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
         and not has_provided_packages
         and not has_provided_support_files
     ):
+        declarations = parse_model_declarations(explicit_user_sim)
+        if len(declarations) == 1 and declarations[0].path.is_file():
+            resolved_model = override_model_name_file(declarations[0].path, {})
+            if resolved_model != declarations[0].path:
+                return override_simulation_name_file(
+                    explicit_user_sim, declarations[0], resolved_model
+                )
         return explicit_user_sim
 
     if explicit_user_sim is not None and overrides:

@@ -15,7 +15,8 @@ Recharge overrides may be supplied as `model.rch`, `model.rcha`, or
 `model.rchb`; supply at most one. All are resolved as one `RCH6` replacement.
 Likewise, `model.wel` replaces all active `WEL6` declarations. Package-level
 observation files such as `*.drn.obs` and `*.riv.obs` are not promoted to
-model-level `OBS6` entries.
+model-level `OBS6` entries; duplicate package-level entries already present in
+an explicit generated model name file are removed during resolution.
 
 See [`docs/app-runtime.md`](../docs/app-runtime.md) for the shared contract and
 local smoke-test commands.

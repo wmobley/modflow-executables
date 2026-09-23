@@ -211,6 +211,47 @@ class AppRuntimeTests(unittest.TestCase):
             self.assertEqual(Path(result.stdout.strip()), (run_root / "mfsim.nam").resolve())
             self.assertEqual((run_root / "custom.nam").read_text(encoding="utf-8"), original_model)
 
+    def test_modflow6_repairs_package_observations_in_explicit_generated_model(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_root = root / "run"
+            run_root.mkdir()
+            (run_root / "mfsim.nam").write_text(
+                "BEGIN MODELS\n  GWF6 generated.model.nam model\nEND MODELS\n",
+                encoding="utf-8",
+            )
+            (run_root / "generated.model.nam").write_text(
+                "BEGIN PACKAGES\n"
+                "  DRN6 model.drn drn\n"
+                "  OBS6 model.drn.obs drn_obs\n"
+                "  OBS6 model.obs model_obs\n"
+                "  RIV6 model.riv riv\n"
+                "  OBS6 model.riv.obs riv_obs\n"
+                "END PACKAGES\n",
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, str(REPO / "modflow6" / "resolve_sim_nam.py"), str(run_root)],
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            resolved_sim = Path(result.stdout.strip())
+            self.assertEqual(resolved_sim.name, "mfsim.nam")
+            self.assertIn("resolved.model.nam", resolved_sim.read_text(encoding="utf-8"))
+            resolved_model = run_root / "resolved.model.nam"
+            resolved_text = resolved_model.read_text(encoding="utf-8")
+            self.assertEqual(resolved_text.count("OBS6"), 1)
+            self.assertIn("OBS6 model.obs model_obs", resolved_text)
+            self.assertNotIn("model.drn.obs", resolved_text)
+            self.assertNotIn("model.riv.obs", resolved_text)
+            self.assertIn("model.drn", resolved_text)
+            self.assertIn("model.riv", resolved_text)
+
     def test_modflow6_overrides_preserve_package_multiplicity_and_scope(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

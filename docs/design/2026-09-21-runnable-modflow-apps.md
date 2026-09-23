@@ -137,6 +137,8 @@ or remote model state is modified by this change.
 - Archive input remains required; well and recharge overrides remain optional.
 - Package-level observation files remain attached to their owning package and
   are not promoted to model-level `OBS6` declarations.
+- Explicit generated model name files are repaired when they incorrectly list
+  package-level observation files as model-level `OBS6` entries.
 
 ## User feedback / decisions
 
