@@ -9,9 +9,6 @@ OUTPUTS_DIR="${_tapisExecSystemOutputDir:-/tapis/output}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUN_ROOT="$PWD/run"
 SCRATCH_DIR="$PWD/scratch"
-DEFAULT_DATA_DIR=""
-DEFAULT_STAGE_DIR="$RUN_ROOT/default_data"
-DEFAULT_DATA_DIR_ARG=""
 ARCHIVE_URL_ARG=""
 ARCHIVE_DOWNLOAD_MAX_BYTES=$((8 * 1024 * 1024 * 1024))  # 8 GiB, matches validate_archive.py cap
 
@@ -38,7 +35,7 @@ function copy_staged_inputs() {
 	for item in "$source_dir"/*; do
 		item_name="$(basename "$item")"
 		case "$item_name" in
-			run|output|work|home|scratch)
+			run|output|work|home|scratch|default_data)
 				continue
 				;;
 		esac
@@ -63,29 +60,8 @@ function normalize_arg() {
 
 function parse_args() {
 	# Positional app args, per app.json's parameterSet.appArgs order:
-	#   $1 = mf6DefaultDir  (baseline directory path, existing)
-	#   $2 = mf6ArchiveUrl  (optional https URL to a model zip, new)
-	DEFAULT_DATA_DIR_ARG="$(normalize_arg "${1:-}")"
-	ARCHIVE_URL_ARG="$(normalize_arg "${2:-}")"
-}
-
-function resolve_default_data_dir() {
-	local configured_dir="${DEFAULT_DATA_DIR_ARG:-}"
-
-	if [[ -n "$configured_dir" ]]; then
-		if [[ -d "$configured_dir" ]]; then
-			DEFAULT_DATA_DIR="$configured_dir"
-			log "Using default data directory from app arg: $DEFAULT_DATA_DIR"
-			return
-		fi
-		log "Configured default data directory does not exist: $configured_dir"
-	fi
-
-	if [[ -d "$RUN_ROOT/default_data" ]]; then
-		DEFAULT_DATA_DIR="$RUN_ROOT/default_data"
-	elif [[ -d "$INPUTS_DIR/default_data" ]]; then
-		DEFAULT_DATA_DIR="$INPUTS_DIR/default_data"
-	fi
+	#   $1 = mf6ArchiveUrl  (optional https URL to a supplemental archive)
+	ARCHIVE_URL_ARG="$(normalize_arg "${1:-}")"
 }
 
 function flatten_support_inputs() {
@@ -169,17 +145,6 @@ function normalize_support_slot_filenames() {
 			log "Mapped $(basename "$slot_path") to $(basename "$expected_name") for MF6 support-file compatibility"
 		fi
 	done
-}
-
-function stage_default_data_dir() {
-	if [[ -z "$DEFAULT_DATA_DIR" ]]; then
-		return
-	fi
-	log "Overlaying baseline files from $DEFAULT_DATA_DIR into $RUN_ROOT"
-	copy_tree_contents "$DEFAULT_DATA_DIR" "$RUN_ROOT"
-	mkdir -p "$DEFAULT_STAGE_DIR"
-	log "Staging baseline MF6 files from $DEFAULT_DATA_DIR into $DEFAULT_STAGE_DIR"
-	copy_tree_contents "$DEFAULT_DATA_DIR" "$DEFAULT_STAGE_DIR"
 }
 
 function resolve_extracted_root() {
@@ -305,8 +270,6 @@ function fetch_archive_from_url() {
 
 function stage_user_inputs() {
 	local sim_archive="$INPUTS_DIR/simulation.zip"
-	local archive
-	local archives=()
 
 	rm -rf "$RUN_ROOT"
 	mkdir -p "$RUN_ROOT"
@@ -318,21 +281,12 @@ function stage_user_inputs() {
 		copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
 	fi
 
-	if [[ -f "$sim_archive" ]]; then
-		safe_extract "$sim_archive" "$RUN_ROOT" "simulation.zip"
-	else
-		shopt -s nullglob
-		archives=("$INPUTS_DIR"/*.zip "$INPUTS_DIR"/*.7z "$INPUTS_DIR"/*.zipx)
-		shopt -u nullglob
-		if ((${#archives[@]} > 0)); then
-			for archive in "${archives[@]}"; do
-				if [[ "$archive" == "$sim_archive" ]]; then
-					continue
-				fi
-				safe_extract "$archive" "$RUN_ROOT" "$(basename "$archive")"
-			done
-		fi
+	if [[ ! -f "$sim_archive" ]]; then
+		log "ERROR: required MODFLOW 6 input archive is missing: $sim_archive"
+		return 1
 	fi
+
+	safe_extract "$sim_archive" "$RUN_ROOT" "simulation.zip"
 }
 
 # -----------------------------------------------------------------------------
@@ -468,10 +422,9 @@ function log_external_reference_checks() {
 
 function log_setup_diagnostics() {
 	log "Running MF6 setup diagnostics"
-	log "Setup context: RUN_ROOT=$RUN_ROOT INPUTS_DIR=$INPUTS_DIR DEFAULT_DATA_DIR=${DEFAULT_DATA_DIR:-__NONE__}"
+	log "Setup context: RUN_ROOT=$RUN_ROOT INPUTS_DIR=$INPUTS_DIR"
 	log_dir_status "$RUN_ROOT/provided" "provided input directory"
 	log_dir_status "$RUN_ROOT/array_data" "array_data directory"
-	log_dir_status "$RUN_ROOT/default_data" "default_data directory"
 	log_file_status "$RUN_ROOT/array_data/delr.txt" "array_data/delr.txt"
 	log_file_status "$RUN_ROOT/array_data/delc.txt" "array_data/delc.txt"
 	log_external_reference_checks
@@ -526,8 +479,6 @@ function log_solver_failure_summary() {
 function prepare_run() {
 	mkdir -p "$OUTPUTS_DIR"
 	stage_user_inputs
-	resolve_default_data_dir
-	stage_default_data_dir
 	copy_staged_inputs "$INPUTS_DIR" "$RUN_ROOT"
 	flatten_support_inputs
 	normalize_support_slot_filenames

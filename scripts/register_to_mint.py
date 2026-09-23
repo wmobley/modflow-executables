@@ -9,8 +9,8 @@ Builds, per variant, the catalog hierarchy:
            -> ModelConfiguration  (has_software_image + has_component_location)
                 -> DatasetSpecification inputs  (one per app.json fileInput)
                 -> DatasetSpecification outputs (from models_metadata.json)
-                -> Parameter (baseline data directory)
-                -> ModelConfigurationSetup (per named GAM, with region + baseline dir)
+                -> Parameter (when a variant declares one)
+                -> ModelConfigurationSetup (per named GAM, with region and optional baseline dir)
 
 Inputs come straight from each variant's app.json `fileInputs`; everything else
 (authors, license, outputs, regions/GAMs, descriptions) comes from
@@ -329,7 +329,10 @@ def _default_dir_value(app: dict[str, Any], param_name: str) -> str | None:
 
 def build_config_parameters(app: dict[str, Any], meta_variant: dict[str, Any]) -> list[dict[str, Any]]:
     vslug = meta_variant["version_slug"]
-    default_dir = _default_dir_value(app, meta_variant.get("default_dir_param", ""))
+    param_name = meta_variant.get("default_dir_param", "")
+    if not param_name:
+        return []
+    default_dir = _default_dir_value(app, param_name)
     param = {
         "id": uri(f"{vslug}_param_baseline_dir"),
         "type": ["Parameter"],
@@ -358,13 +361,13 @@ def build_setup_nodes(variant: str, app: dict[str, Any], meta_variant: dict[str,
     vslug = meta_variant["version_slug"]
     nodes = []
     for s in meta_variant.get("setups", []):
-        nodes.append({
+        node = {
             "id": uri(f"{vslug}_setup_{s['slug']}"),
             "type": ["ModelConfigurationSetup"],
             "label": arr(s["label"]),
             "description": arr(
                 f"Region-specific setup of {meta_variant['label']} for "
-                f"{s['region']}, pinned to the baseline GAM dataset on TACC."
+                f"{s['region']}."
             ),
             "has_region": arr(s["region"]),
             # Tapis execution bindings (inherited from parent config)
@@ -372,7 +375,13 @@ def build_setup_nodes(variant: str, app: dict[str, Any], meta_variant: dict[str,
             "tapis_app_version": arr(app["version"]),
             "has_software_image": arr(app["containerImage"]),
             "has_component_location": arr(component_url),
-            "hasParameter": [{
+        }
+        if s.get("baseline_dir"):
+            node["description"] = arr(
+                f"Region-specific setup of {meta_variant['label']} for "
+                f"{s['region']}, pinned to the baseline GAM dataset on TACC."
+            )
+            node["hasParameter"] = [{
                 "id": uri(f"{vslug}_param_baseline_{s['slug']}"),
                 "type": ["Parameter"],
                 "label": arr("Baseline data directory"),
@@ -380,8 +389,8 @@ def build_setup_nodes(variant: str, app: dict[str, Any], meta_variant: dict[str,
                 "has_default_value": arr(s["baseline_dir"]),
                 "parameter_type": arr("model_param"),
                 "position": arr("1"),
-            }],
-        })
+            }]
+        nodes.append(node)
     return nodes
 
 

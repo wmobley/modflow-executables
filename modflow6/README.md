@@ -7,6 +7,10 @@ package family in the archive. When an archive contains `mfsim.nam` and a
 model name file, those files remain authoritative and are patched only for
 the requested overrides.
 
+There is no host-specific baseline-directory fallback for MODFLOW 6. The
+selected archive is the model input contract; a missing `simulation.zip`
+causes the runner to stop before invoking the solver.
+
 Recharge overrides may be supplied as `model.rch`, `model.rcha`, or
 `model.rchb`; supply at most one. All are resolved as one `RCH6` replacement.
 Likewise, `model.wel` replaces all active `WEL6` declarations. Package-level

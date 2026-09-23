@@ -87,6 +87,43 @@ def write_fake_solver(path: Path, content: str) -> None:
 
 
 class AppRuntimeTests(unittest.TestCase):
+    def test_modflow6_requires_simulation_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            inputs = root / "inputs"
+            outputs = root / "outputs"
+            (inputs / "provided").mkdir(parents=True)
+            (inputs / "provided" / "model.wel").write_text("should-not-run\n", encoding="utf-8")
+            (inputs / "default_data").mkdir()
+            (inputs / "default_data" / "model.nam").write_text(
+                "default data must not be used\n", encoding="utf-8"
+            )
+
+            fake_solver = root / "fake-solver"
+            write_fake_solver(fake_solver, "#!/bin/sh\nprintf '%s\\n' invoked > solver-invoked\n")
+            env = os.environ.copy()
+            env.update(
+                {
+                    "_tapisExecSystemInputDir": str(inputs),
+                    "_tapisExecSystemOutputDir": str(outputs),
+                    "MF6_EXE": str(fake_solver),
+                    "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(REPO / "modflow6" / "run.sh")],
+                cwd=root,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("required MODFLOW 6 input archive is missing", result.stdout)
+            self.assertFalse((root / "solver-invoked").exists())
+
     def test_all_apps_unpack_archive_and_apply_overrides(self) -> None:
         for app_name, case in APP_CASES.items():
             with self.subTest(app=app_name), tempfile.TemporaryDirectory() as temp_dir:

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Submit a MODFLOW 6 Tapis job using the mf6ArchiveUrl input.
+"""Submit a MODFLOW 6 Tapis job using the required simulation archive input.
 
-Fetches a model archive by URL (downloaded and unzipped inside the job,
-validated for path traversal / symlinks / size) instead of uploading every
-input file individually.
+Supplies the archive URL as the Tapis ``mf6-simulation-archive`` file input;
+the app downloads and unpacks it inside the job after validating path
+traversal, symlinks, and size. Optional package overrides can be supplied as
+additional file inputs.
 
 Usage:
     TAPIS_TOKEN=... python3 submit_mf6_archive_job.py \\
@@ -112,16 +113,14 @@ def submit(token: str, args: argparse.Namespace) -> str:
         "name": job_name,
         "appId": args.app_id,
         "appVersion": args.app_version,
-        "parameterSet": {
-            "appArgs": [
-                {"name": "mf6ArchiveUrl", "arg": args.archive_url},
-            ],
-        },
+        "fileInputs": [
+            {"name": "mf6-simulation-archive", "sourceUrl": args.archive_url},
+        ],
     }
 
     file_inputs = parse_file_inputs(args.file_input)
     if file_inputs:
-        body["fileInputs"] = file_inputs
+        body["fileInputs"].extend(file_inputs)
 
     if args.max_minutes:
         body["maxMinutes"] = args.max_minutes

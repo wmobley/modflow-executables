@@ -211,11 +211,9 @@ def is_relative_to(path: Path, other: Path) -> bool:
         return False
 
 
-def priority(path: Path, provided_root: Path, default_root: Path) -> tuple[int, str]:
+def priority(path: Path, provided_root: Path) -> tuple[int, str]:
     if is_relative_to(path, provided_root):
         bucket = 0
-    elif is_relative_to(path, default_root):
-        bucket = 2
     else:
         bucket = 1
     return bucket, path.as_posix()
@@ -231,10 +229,10 @@ def is_candidate_file(path: Path) -> bool:
     return True
 
 
-def first_match(candidates: list[Path], provided_root: Path, default_root: Path) -> Path | None:
+def first_match(candidates: list[Path], provided_root: Path) -> Path | None:
     if not candidates:
         return None
-    return sorted(candidates, key=lambda path: priority(path, provided_root, default_root))[0]
+    return sorted(candidates, key=lambda path: priority(path, provided_root))[0]
 
 
 def rel(path: Path, run_root: Path) -> str:
@@ -246,7 +244,6 @@ def write_generated_model_nam(
     package_files: dict[str, list[Path]],
     user_files: list[Path],
     provided_root: Path,
-    default_root: Path,
     overrides: dict[str, Path] | None = None,
 ) -> Path:
     generated_model = run_root / "generated.model.nam"
@@ -262,7 +259,7 @@ def write_generated_model_nam(
             continue
         all_matches = sorted(
             package_files[pkg_name],
-            key=lambda path: priority(path, provided_root, default_root),
+            key=lambda path: priority(path, provided_root),
         )
         user_matches = [path for path in all_matches if path in user_files]
         matches = user_matches or all_matches
@@ -338,11 +335,15 @@ def write_generated_sim_nam(
 
 
 def resolve_sim_nam_path(run_root: Path) -> Path:
-    default_root = run_root / "default_data"
     provided_root = run_root / "provided"
+    legacy_default_root = run_root / "default_data"
 
-    files = [path for path in sorted(run_root.rglob("*")) if is_candidate_file(path)]
-    user_files = [path for path in files if not is_relative_to(path, default_root)]
+    files = [
+        path
+        for path in sorted(run_root.rglob("*"))
+        if is_candidate_file(path) and not is_relative_to(path, legacy_default_root)
+    ]
+    user_files = files
 
     sim_nams = [path for path in files if path.name.lower() == "mfsim.nam"]
     user_sim_nams = [path for path in sim_nams if path in user_files]
@@ -377,7 +378,7 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
     )
     overrides = discover_overrides(run_root)
 
-    explicit_user_sim = first_match(user_sim_nams, provided_root, default_root)
+    explicit_user_sim = first_match(user_sim_nams, provided_root)
     if (
         explicit_user_sim is not None
         and not overrides
@@ -401,9 +402,9 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
         resolved_model = override_model_name_file(model_path, overrides)
         return override_simulation_name_file(explicit_user_sim, declarations[0], resolved_model)
 
-    existing_sim = first_match(sim_nams, provided_root, default_root)
-    selected_model_nam = first_match(user_model_nams, provided_root, default_root) or first_match(
-        model_nams, provided_root, default_root
+    existing_sim = first_match(sim_nams, provided_root)
+    selected_model_nam = first_match(user_model_nams, provided_root) or first_match(
+        model_nams, provided_root
     )
 
     need_generated_model = selected_model_nam is None or has_provided_packages
@@ -413,7 +414,6 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
             package_files,
             user_files,
             provided_root,
-            default_root,
             overrides,
         )
     elif overrides:
@@ -427,8 +427,8 @@ def resolve_sim_nam_path(run_root: Path) -> Path:
     if existing_sim is not None and not has_user_packages and not has_user_support_files and not user_model_nams:
         return existing_sim
 
-    tdis_path = first_match(tdis_files, provided_root, default_root)
-    ims_path = first_match(ims_files, provided_root, default_root)
+    tdis_path = first_match(tdis_files, provided_root)
+    ims_path = first_match(ims_files, provided_root)
     if tdis_path is None:
         raise SystemExit("Unable to locate a MODFLOW 6 TDIS file (*.tdis).")
     if ims_path is None:

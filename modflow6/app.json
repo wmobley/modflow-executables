@@ -33,17 +33,8 @@
       "appArgs": [
         {
           "arg": "__NONE__",
-          "name": "mf6DefaultDir",
-          "description": "Default baseline MF6 input directory used when files are not present in uploaded inputs.",
-          "inputMode": "FIXED",
-          "notes": {
-            "isHidden": true
-          }
-        },
-        {
-          "arg": "__NONE__",
           "name": "mf6ArchiveUrl",
-          "description": "Optional https:// URL to a zip or 7z archive containing a MODFLOW 6 model (e.g. a published GAM archive). If supplied, the archive is downloaded into scratch space and extracted into the run directory as the simulation baseline before any uploaded override files are applied.",
+          "description": "Optional https:// URL to a supplemental zip or 7z archive. If supplied, it is downloaded into scratch space and extracted before the required simulation.zip input is applied.",
           "inputMode": "INCLUDE_ON_DEMAND"
         }
       ],
@@ -397,7 +388,7 @@
   "notes": {
     "label": "MODFLOW 6",
     "helpUrl": "https://www.simonwenkel.com/notes/geo/software/modflow/compiling-modflow-on-linux.html",
-    "helpText": "Provide a simulation ZIP (uploaded, or fetched from mf6ArchiveUrl), and/or any subset of MF6 input files. The launch script stages those files under provided/, fills missing files from the configured baseline directory, and generates mfsim.nam and a model name file when they are not supplied.",
+    "helpText": "Provide the required simulation ZIP and/or any subset of MF6 input files. The launch script extracts the ZIP, stages override files under provided/, and generates mfsim.nam and a model name file when they are not supplied.",
     "hideNodeCountAndCoresPerNode": true,
     "isInteractive": false,
     "icon": "jupyter",

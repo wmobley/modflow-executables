@@ -16,6 +16,11 @@ error. Package-level observation files such as `*.drn.obs` and `*.riv.obs`
 remain referenced by their owning package and are not treated as model-level
 `OBS6` packages.
 
+MODFLOW 6 does not expose a host-specific `mf6DefaultDir` parameter and does
+not overlay a baseline directory. Its required `simulation.zip` is the only
+model baseline; the optional `mf6ArchiveUrl` app argument is retained only for
+supplemental archive downloads.
+
 ## Local checks
 
 Run the network-free runtime and registration checks from this repository:

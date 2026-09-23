@@ -47,6 +47,26 @@ class RegistrationPayloadTests(unittest.TestCase):
                 self.assertEqual(config["tapis_app_version"], [app["version"]])
                 self.assertEqual(config["has_software_image"], [app["containerImage"]])
 
+    def test_modflow6_has_no_legacy_baseline_parameter(self) -> None:
+        app, meta = self.app_and_meta("modflow6")
+        config = registration.build_config_node(
+            "modflow6", app, meta, "https://components.example/modflow6.json"
+        )
+
+        self.assertEqual(config["hasParameter"], [])
+        self.assertNotIn("mf6DefaultDir", json.dumps(config))
+        self.assertNotIn("Baseline data directory", json.dumps(config))
+
+        app_args = app["jobAttributes"]["parameterSet"]["appArgs"]
+        self.assertNotIn("mf6DefaultDir", {arg["name"] for arg in app_args})
+        archive = next(
+            item for item in app["jobAttributes"]["fileInputs"]
+            if item["name"] == "mf6-simulation-archive"
+        )
+        self.assertEqual(archive["inputMode"], "REQUIRED")
+        self.assertEqual(archive["targetPath"], "simulation.zip")
+        self.assertNotIn("baseline directory", app["notes"]["helpText"].lower())
+
     def test_setup_payload_repeats_exact_manifest_app_binding(self) -> None:
         for variant in VARIANTS:
             app, meta = self.app_and_meta(variant)

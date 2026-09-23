@@ -103,12 +103,11 @@
       "version_id": "6.6.3",
       "label": "MODFLOW 6",
       "description": "MODFLOW 6 — the current core USGS modular hydrologic model. Object-oriented framework supporting structured (DIS), vertex (DISV), and unstructured (DISU) grids and multi-model simulations. Driven by the mfsim.nam simulation name file.",
-      "usage_notes": "Container entrypoint runs `mf6` in the staged simulation directory. Provide a full simulation.zip, or individual package files; missing files fall back to an optional baseline data directory.",
+      "usage_notes": "Container entrypoint runs `mf6` in the staged simulation directory. Provide the required simulation.zip; optional package files can override packages from the archive.",
       "source_code": "https://github.com/MODFLOW-USGS/modflow6",
       "website": "https://www.usgs.gov/software/modflow-6-usgs-modular-hydrologic-model",
       "binary": "mf6",
       "namefile": "mfsim.nam",
-      "default_dir_param": "mf6DefaultDir",
       "reclassify_as_output": [],
       "outputs": [
         {"code": "lst", "ext": "lst", "label": "Listing file (run log)"},
@@ -118,8 +117,7 @@
       ],
       "setups": [
         {"slug": "ntgam", "label": "MODFLOW 6 — Northern Trinity & Woodbine GAM (NTGAM) v3.01",
-         "region": "Northern Trinity & Woodbine Aquifer, Texas",
-         "baseline_dir": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/NTGAM/ntgam_v301/NTGAM"}
+         "region": "Northern Trinity & Woodbine Aquifer, Texas"}
       ]
     },
 
