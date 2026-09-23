@@ -7,10 +7,14 @@ Archives uploaded with a `.7z` or `.zipx` suffix are also accepted by the local
 stager; the archive contents are still validated before extraction.
 
 Well and recharge inputs are optional overrides. They are staged below
-`provided/` and take precedence over same-package files from the archive or
-the configured baseline directory. The MODFLOW 6 runner recognizes `rch`,
-`rcha`, and `rchb` as `RCH6` packages and can retain multiple recharge files
-when they are present in the archive.
+`provided/`. For MODFLOW 6, an archive's explicit `mfsim.nam` and model name
+file remain authoritative; the runner patches those package declarations only
+when an override is supplied. `model.wel` replaces all active `WEL6`
+declarations, while one of `model.rch`, `model.rcha`, or `model.rchb` replaces
+the active `RCH6` family. Supplying more than one recharge override is an
+error. Package-level observation files such as `*.drn.obs` and `*.riv.obs`
+remain referenced by their owning package and are not treated as model-level
+`OBS6` packages.
 
 ## Local checks
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -62,7 +63,7 @@ APP_CASES = {
     "modflow6": {
         "exe_env": "MF6_EXE",
         "archive_files": {
-            "mfsim.nam": "BEGIN SIMULATION\nEND SIMULATION\n",
+            "mfsim.nam": "BEGIN MODELS\n  GWF6 model.nam model\nEND MODELS\n",
             "model.nam": "BEGIN PACKAGES\n  DIS6 model.dis\n  NPF6 model.npf\n  RCH6 model.rcha\n  WEL6 model.wel\nEND PACKAGES\n",
             "model.tdis": "tdis\n",
             "model.ims": "ims\n",
@@ -73,7 +74,8 @@ APP_CASES = {
         },
         "overrides": {"provided/model.rchb": "provided-rchb\n", "provided/model.wel": "provided-wel\n"},
         "generated_name": "generated.model.nam",
-        "expected_tokens": ("RCH6  provided/model.rchb", "WEL6  provided/model.wel"),
+        "expected_tokens": ("RCH6 provided/model.rchb", "WEL6 provided/model.wel"),
+        "forbidden_tokens": ("RCH6 model.rcha", "WEL6 model.wel"),
         "fake_solver": "#!/bin/sh\nprintf '%s\\n' mf6 > mfsim.lst\n",
     },
 }
@@ -133,7 +135,115 @@ class AppRuntimeTests(unittest.TestCase):
                 generated_text = generated.read_text(encoding="utf-8")
                 for expected in case["expected_tokens"]:
                     self.assertIn(expected, generated_text, f"{app_name}: {generated_text}")
+                for forbidden in case.get("forbidden_tokens", ()):
+                    self.assertNotIn(forbidden, generated_text, f"{app_name}: {generated_text}")
                 self.assertTrue((outputs / case["generated_name"]).exists())
+
+    def test_modflow6_preserves_explicit_name_files_without_overrides(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_root = root / "run" / "nested"
+            run_root.mkdir(parents=True)
+            (run_root / "mfsim.nam").write_text(
+                "BEGIN MODELS\n  GWF6 custom.nam custom\nEND MODELS\n",
+                encoding="utf-8",
+            )
+            original_model = (
+                "BEGIN PACKAGES\n"
+                "  WEL6 custom.dom dom\n"
+                "  WEL6 custom.min min\n"
+                "  RCH6 custom.rcha recharge\n"
+                "  OBS6 custom.obs observations\n"
+                "END PACKAGES\n"
+            )
+            (run_root / "custom.nam").write_text(original_model, encoding="utf-8")
+            (run_root / "custom.dom").write_text("dom\n", encoding="utf-8")
+            (run_root / "custom.min").write_text("min\n", encoding="utf-8")
+            (run_root / "custom.rcha").write_text("rcha\n", encoding="utf-8")
+            (run_root / "custom.obs").write_text("obs\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(REPO / "modflow6" / "resolve_sim_nam.py"), str(run_root)],
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(Path(result.stdout.strip()), (run_root / "mfsim.nam").resolve())
+            self.assertEqual((run_root / "custom.nam").read_text(encoding="utf-8"), original_model)
+
+    def test_modflow6_overrides_preserve_package_multiplicity_and_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_root = root / "run"
+            provided = run_root / "provided"
+            provided.mkdir(parents=True)
+            (run_root / "mfsim.nam").write_text(
+                "BEGIN MODELS\n  GWF6 custom.nam custom\nEND MODELS\n",
+                encoding="utf-8",
+            )
+            (run_root / "custom.nam").write_text(
+                "BEGIN PACKAGES\n"
+                "  WEL6 custom.dom dom\n"
+                "  WEL6 custom.min min\n"
+                "  RCH6 custom.rcha recharge\n"
+                "  OBS6 custom.obs observations\n"
+                "END PACKAGES\n",
+                encoding="utf-8",
+            )
+            (provided / "model.wel").write_text("replacement wells\n", encoding="utf-8")
+            (provided / "model.rch").write_text("replacement recharge\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(REPO / "modflow6" / "resolve_sim_nam.py"), str(run_root)],
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            resolved_sim = Path(result.stdout.strip())
+            self.assertEqual(resolved_sim.name, "mfsim.nam")
+            self.assertIn("generated.model.nam", resolved_sim.read_text(encoding="utf-8"))
+            resolved_model = run_root / "generated.model.nam"
+            resolved_text = resolved_model.read_text(encoding="utf-8")
+            self.assertEqual(resolved_text.count("WEL6"), 1)
+            self.assertEqual(resolved_text.count("RCH6"), 1)
+            self.assertEqual(resolved_text.count("OBS6"), 1)
+            self.assertIn("WEL6 provided/model.wel wel6_override", resolved_text)
+            self.assertIn("RCH6 provided/model.rch rch6_override", resolved_text)
+            self.assertNotIn("custom.dom", resolved_text)
+            self.assertNotIn("custom.min", resolved_text)
+            self.assertNotIn("custom.rcha", resolved_text)
+
+    def test_modflow6_fallback_does_not_promote_package_observations(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_root = root / "run"
+            run_root.mkdir()
+            for filename in ("model.dis", "model.npf", "model.tdis", "model.ims"):
+                (run_root / filename).write_text(filename, encoding="utf-8")
+            for filename in ("model.obs", "model.drn.obs", "model.riv.obs"):
+                (run_root / filename).write_text(filename, encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, str(REPO / "modflow6" / "resolve_sim_nam.py"), str(run_root)],
+                cwd=root,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            generated_model = run_root / "generated.model.nam"
+            generated_text = generated_model.read_text(encoding="utf-8")
+            self.assertEqual(generated_text.count("OBS6"), 1)
+            self.assertIn("OBS6  model.obs", generated_text)
+            self.assertNotIn("model.drn.obs", generated_text)
+            self.assertNotIn("model.riv.obs", generated_text)
 
 
 if __name__ == "__main__":

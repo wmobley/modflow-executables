@@ -2,11 +2,16 @@
 
 This app runs MODFLOW 6 simulations on TACC. A complete `simulation.zip` is
 required; the runner validates and unpacks it before resolving `mfsim.nam`.
-Optional package files under `provided/` override matching archive files.
+Optional WEL and RCH package files under `provided/` replace the active
+package family in the archive. When an archive contains `mfsim.nam` and a
+model name file, those files remain authoritative and are patched only for
+the requested overrides.
 
 Recharge overrides may be supplied as `model.rch`, `model.rcha`, or
-`model.rchb`; all are resolved as `RCH6` packages. Multiple recharge packages
-from an archive are retained when they use these conventions.
+`model.rchb`; supply at most one. All are resolved as one `RCH6` replacement.
+Likewise, `model.wel` replaces all active `WEL6` declarations. Package-level
+observation files such as `*.drn.obs` and `*.riv.obs` are not promoted to
+model-level `OBS6` entries.
 
 See [`docs/app-runtime.md`](../docs/app-runtime.md) for the shared contract and
 local smoke-test commands.

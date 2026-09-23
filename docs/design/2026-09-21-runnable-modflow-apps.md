@@ -38,7 +38,9 @@ archive.
    baseline directory.
 3. Extend MODFLOW 6 recharge resolution to recognize `rch`, `rcha`, and
    `rchb`, and declare the `rchb` override input alongside the existing recharge
-   slots. All recognized recharge files map to the MODFLOW 6 `RCH6` package.
+   slots. All recognized recharge files map to the MODFLOW 6 `RCH6` package;
+   explicit model name files remain authoritative, and a supplied recharge
+   override replaces the active `RCH6` family.
 4. Make local archive staging accept both `.zip` and `.7z` filenames while
    retaining archive-format validation and symlink/path protections.
 5. Update the registration metadata and read-only smoke checker so all four apps
@@ -83,9 +85,9 @@ same package; unrelated archive files remain available to the run.
 
 ## Risks and tradeoffs
 
-- A generic `rchb` filename is treated as another MODFLOW 6 recharge package;
-  this is useful for multi-recharge workflows but cannot validate the package's
-  internal semantics without running MODFLOW.
+- A generic `rchb` filename is treated as a MODFLOW 6 recharge override;
+  the resolver permits only one override per recharge family and cannot
+  validate the package's internal semantics without running MODFLOW.
 - Remote Tapis smoke tests remain opt-in and require a real archive source and
   credentials; local tests intentionally use fake binaries.
 - Existing uncommitted registration and app changes are preserved rather than
@@ -124,17 +126,17 @@ or remote model state is modified by this change.
 ## Open questions
 
 - The exact recharge package names in a user archive may differ from the
-  conventional extensions. The resolver will support the explicit registered
-  slots and existing archive entries; arbitrary package discovery remains a
-  model-specific concern.
+  conventional extensions. The resolver supports the explicit registered
+  override slots and preserves explicit archive name files; arbitrary package
+  discovery remains a model-specific concern.
 
 ## Decisions
 
 - The user's explicit request to make all four app variants runnable is treated
   as approval to implement this archive-plus-override design.
 - Archive input remains required; well and recharge overrides remain optional.
-- This change does not register apps, execute MINT jobs, push Git commits, or
-  mutate the database.
+- Package-level observation files remain attached to their owning package and
+  are not promoted to model-level `OBS6` declarations.
 
 ## User feedback / decisions
 
