@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that the four MODFLOW Tapis apps are registered, enabled, and on the
+"""Check that the five MODFLOW Tapis apps are registered, enabled, and on the
 expected image version. Optionally submit a smoke-test job for each.
 
 Usage:
@@ -87,6 +87,13 @@ APPS = [
             "mf2000-str": "ygjk_tr.str",
             "mf2000-wel": "ygjk_tr.wel",
         },
+    },
+    {
+        "id":          "modflow-2005-simulation",
+        "image":       "modflow-2005",
+        "archive_input": "mf2005-simulation-archive",
+        "baseline_dir": "",
+        "test_inputs": {},
     },
     {
         "id":          "modflow-96-simulation",

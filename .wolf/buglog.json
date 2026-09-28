@@ -36,6 +36,30 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-09-21T19:44:54-05:00"
+    },
+    {
+      "id": "bug-004",
+      "timestamp": "2026-09-21T20:05:00-05:00",
+      "error_message": "Real GAM smoke-test submissions after the first job were rejected with TAPIS_SECURITY_JWT_VERIFY_FAIL.",
+      "file": "scripts/run_gam_smoke_tests.py",
+      "root_cause": "The active Tapis credential was not accepted by the later job-submission requests; the first USG job had already been accepted and remained RUNNING.",
+      "fix": "Stopped retrying to avoid duplicate or unauthorized submissions; retain the active job UUID and require a fresh verified Tapis credential before continuing.",
+      "tags": ["tapis", "smoke-test", "authentication", "runtime"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T20:05:00-05:00"
+    },
+    {
+      "id": "bug-005",
+      "timestamp": "2026-09-28T15:40:00-05:00",
+      "error_message": "Initial validation command used repository-prefixed paths from inside modflow-executables and two registration tests still assumed a four-app inventory.",
+      "file": "scripts/test_register_to_mint.py; modflow-2005/",
+      "root_cause": "The new app was added to the executable repository while the validation command retained the parent-repository path prefix; existing tests encoded the previous four-app/new-USG-only assumptions.",
+      "fix": "Reran checks from the correct working directory, added MODFLOW-2005 to the test inventory, and updated expectations for the new app's dedicated archive presentation and configuration path.",
+      "tags": ["modflow-2005", "testing", "registration", "path"],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-28T15:40:00-05:00"
     }
   ]
 }

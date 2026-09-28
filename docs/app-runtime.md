@@ -1,7 +1,7 @@
 # MODFLOW app runtime contract
 
-All four app manifests (`modflow6`, `modflow-usg`, `modflow-2000`, and
-`modflow-96`) require one `simulation.zip` file input. The runner validates the
+All five app manifests (`modflow6`, `modflow-usg`, `modflow-2000`,
+`modflow-2005`, and `modflow-96`) require one `simulation.zip` file input. The runner validates the
 archive, unpacks it into the run directory, and keeps its relative file layout.
 Archives uploaded with a `.7z` or `.zipx` suffix are also accepted by the local
 stager; the archive contents are still validated before extraction.
@@ -21,6 +21,11 @@ MODFLOW 6 does not expose a host-specific `mf6DefaultDir` parameter and does
 not overlay a baseline directory. Its required `simulation.zip` is the only
 model baseline; the optional `mf6ArchiveUrl` app argument is retained only for
 supplemental archive downloads.
+
+MODFLOW 2005 follows the classic name-file contract. Its archive must contain
+one unambiguous `.nam` file unless `provided/model.nam` is supplied. Optional
+`provided/model.wel` and `provided/model.rch` files rewrite the matching WEL
+and RCH records; they do not create missing packages.
 
 ## Local checks
 

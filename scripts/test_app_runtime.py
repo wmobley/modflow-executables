@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local runtime smoke tests for all four MODFLOW app runners.
+"""Local runtime smoke tests for all five MODFLOW app runners.
 
 The tests use a small ZIP archive and fake solver executables. They verify the
 part that is easy to regress without a TACC account: archive extraction,
@@ -26,6 +26,19 @@ APP_CASES = {
         "archive_files": {
             "model.nam": "LIST 7 model.lst\nBAS6 1 archive.bas\nRCH 19 archive.rch\nWEL 20 archive.wel\n",
             "archive.bas": "archive-bas\n",
+            "archive.rch": "archive-rch\n",
+            "archive.wel": "archive-wel\n",
+        },
+        "overrides": {"provided/model.rch": "provided-rch\n", "provided/model.wel": "provided-wel\n"},
+        "generated_name": "generated.model.nam",
+        "expected_tokens": ("provided/model.rch", "provided/model.wel"),
+        "fake_solver": "#!/bin/sh\nprintf '%s\\n' \"$1\" > fake-solver.ok\n",
+    },
+    "modflow-2005": {
+        "exe_env": "MF2005_EXE",
+        "archive_files": {
+            "model.nam": "LIST 7 model.lst\nBAS6 1 model.bas\nRCH 19 archive.rch\nWEL 20 archive.wel\n",
+            "model.bas": "archive-bas\n",
             "archive.rch": "archive-rch\n",
             "archive.wel": "archive-wel\n",
         },
@@ -175,6 +188,147 @@ class AppRuntimeTests(unittest.TestCase):
                 for forbidden in case.get("forbidden_tokens", ()):
                     self.assertNotIn(forbidden, generated_text, f"{app_name}: {generated_text}")
                 self.assertTrue((outputs / case["generated_name"]).exists())
+
+    def test_modflow2005_archive_only_uses_the_archive_name_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            inputs = root / "inputs"
+            outputs = root / "outputs"
+            inputs.mkdir()
+            archive_path = inputs / "simulation.zip"
+            with zipfile.ZipFile(archive_path, "w") as archive:
+                archive.writestr("model.nam", "LIST 7 model.lst\n")
+
+            fake_solver = root / "fake-mf2005"
+            write_fake_solver(fake_solver, "#!/bin/sh\nprintf '%s\\n' \"$1\" > solver-name.ok\n")
+            env = os.environ.copy()
+            env.update(
+                {
+                    "_tapisExecSystemInputDir": str(inputs),
+                    "_tapisExecSystemOutputDir": str(outputs),
+                    "MF2005_EXE": str(fake_solver),
+                    "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(REPO / "modflow-2005" / "run.sh")],
+                cwd=root,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((outputs / "model.nam").exists())
+            self.assertFalse((root / "run" / "generated.model.nam").exists())
+
+    def test_modflow2005_rejects_ambiguous_archive_name_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            inputs = root / "inputs"
+            outputs = root / "outputs"
+            inputs.mkdir()
+            with zipfile.ZipFile(inputs / "simulation.zip", "w") as archive:
+                archive.writestr("one.nam", "LIST 7 one.lst\n")
+                archive.writestr("two.nam", "LIST 7 two.lst\n")
+
+            fake_solver = root / "fake-mf2005"
+            write_fake_solver(fake_solver, "#!/bin/sh\nprintf invoked > solver-invoked\n")
+            env = os.environ.copy()
+            env.update(
+                {
+                    "_tapisExecSystemInputDir": str(inputs),
+                    "_tapisExecSystemOutputDir": str(outputs),
+                    "MF2005_EXE": str(fake_solver),
+                    "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(REPO / "modflow-2005" / "run.sh")],
+                cwd=root,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("multiple MODFLOW-2005 name files", result.stdout + result.stderr)
+            self.assertFalse((root / "solver-invoked").exists())
+
+    def test_modflow2005_requires_an_archive_name_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            inputs = root / "inputs"
+            outputs = root / "outputs"
+            inputs.mkdir()
+            with zipfile.ZipFile(inputs / "simulation.zip", "w") as archive:
+                archive.writestr("model.bas", "archive-bas\n")
+
+            fake_solver = root / "fake-mf2005"
+            write_fake_solver(fake_solver, "#!/bin/sh\nprintf invoked > solver-invoked\n")
+            env = os.environ.copy()
+            env.update(
+                {
+                    "_tapisExecSystemInputDir": str(inputs),
+                    "_tapisExecSystemOutputDir": str(outputs),
+                    "MF2005_EXE": str(fake_solver),
+                    "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(REPO / "modflow-2005" / "run.sh")],
+                cwd=root,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("must contain an explicit .nam name file", result.stdout + result.stderr)
+            self.assertFalse((root / "solver-invoked").exists())
+
+    def test_modflow2005_rejects_override_without_declared_package_record(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            inputs = root / "inputs"
+            outputs = root / "outputs"
+            inputs.mkdir()
+            (inputs / "provided").mkdir()
+            (inputs / "provided" / "model.wel").write_text("provided-wel\n", encoding="utf-8")
+            with zipfile.ZipFile(inputs / "simulation.zip", "w") as archive:
+                archive.writestr("model.nam", "LIST 7 model.lst\nBAS6 1 model.bas\n")
+                archive.writestr("model.bas", "archive-bas\n")
+
+            fake_solver = root / "fake-mf2005"
+            write_fake_solver(fake_solver, "#!/bin/sh\nprintf invoked > solver-invoked\n")
+            env = os.environ.copy()
+            env.update(
+                {
+                    "_tapisExecSystemInputDir": str(inputs),
+                    "_tapisExecSystemOutputDir": str(outputs),
+                    "MF2005_EXE": str(fake_solver),
+                    "PATH": "/usr/bin:/bin:/opt/homebrew/bin",
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(REPO / "modflow-2005" / "run.sh")],
+                cwd=root,
+                env=env,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("provided WEL override has no corresponding WEL package record", result.stdout + result.stderr)
+            self.assertFalse((root / "solver-invoked").exists())
 
     def test_modflow6_preserves_explicit_name_files_without_overrides(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

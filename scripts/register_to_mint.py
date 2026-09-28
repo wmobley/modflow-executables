@@ -5,7 +5,7 @@ and wire each to its existing Tapis app so the Ensemble Manager can run it.
 Builds, per variant, the catalog hierarchy:
 
     Software (MODFLOW)
-      -> SoftwareVersion (MODFLOW 6 / -USG / -2000 / -96)
+    -> SoftwareVersion (MODFLOW 6 / -USG / -2000 / -2005 / -96)
            -> ModelConfiguration  (has_software_image + has_component_location)
                 -> DatasetSpecification inputs  (one per app.json fileInput)
                 -> DatasetSpecification outputs (from models_metadata.json)
@@ -27,7 +27,7 @@ Usage:
     # dry-run everything (no network, prints payloads):
     python3 scripts/register_to_mint.py --dry-run
 
-    # register all four against a local stack:
+    # register all five against a local stack:
     MINT_API_TOKEN=e2e-test python3 scripts/register_to_mint.py \
         --api-base http://localhost:3001/v2.0.0
 
@@ -74,7 +74,8 @@ def uri(slug: str) -> str:
 
 
 # Read-only inventory captured from the current MINT dev catalog on 2026-09-21.
-# Existing records are updated in place; only MODFLOW-USG uses the create path.
+# Existing records are updated in place; MODFLOW-USG and MODFLOW-2005 use the
+# net-new configuration path.
 # The public catalog has additional historical duplicates, but the dev UI
 # exposes one executable configuration for each repaired engine. Do not use
 # public-catalog duplicate IDs here: the dev database does not contain them.
@@ -111,7 +112,7 @@ LIVE_SOFTWARE_IDS: tuple[str, ...] = (
     uri("69864dbb-68e5-4481-8d65-b8a2b861f956"),
     uri("044308bf-48f1-414e-b0ce-d3fb4b2408b7"),
 )
-NEW_CONFIG_VARIANTS = ("modflow-usg",)
+NEW_CONFIG_VARIANTS = ("modflow-usg", "modflow-2005")
 
 # The archive is the baseline contract. Only these file inputs are exposed as
 # catalog I/O; other Tapis slots remain implementation details of the app.
@@ -156,13 +157,18 @@ def _unit_iri(slug: str) -> str:
     return UNIT_NS + slug
 
 
-def build_presentation(code: str, vslug: str, suffix: str) -> dict[str, Any] | None:
+def build_presentation(
+    code: str,
+    vslug: str,
+    suffix: str,
+    binding_override: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     """A VariablePresentation binding an SVO StandardVariable + Unit to an I/O,
     if the package/output `code` has an svo_bindings entry. has_standard_variable
     and uses_unit are scalar URI columns (the standard_variable/unit entities are
     registered separately so the relationships resolve)."""
     base = re.sub(r"-\d+$", "", code)
-    b = (_META.get("svo_bindings") or {}).get(base)
+    b = binding_override or (_META.get("svo_bindings") or {}).get(base)
     if not b:
         return None
     vp = {
@@ -197,6 +203,16 @@ def build_input_presentations(
     """
     if code != "simulation-archive":
         presentation = build_presentation(code, vslug, f"in_{code}")
+        return [presentation] if presentation else []
+
+    archive_binding = meta_variant.get("archive_binding")
+    if archive_binding:
+        presentation = build_presentation(
+            code,
+            vslug,
+            "in_simulation_archive",
+            binding_override=archive_binding,
+        )
         return [presentation] if presentation else []
 
     reclass = set(meta_variant.get("reclassify_as_output", []))
@@ -286,7 +302,8 @@ def build_inputs(variant: str, app: dict[str, Any], meta_variant: dict[str, Any]
         target = fi.get("targetPath", "")
         pos += 1
         spec = {
-            "id": uri(f"{vslug}_input_{code}"),
+            "id": meta_variant.get("catalog_input_ids", {}).get(code)
+            or uri(f"{vslug}_input_{code}"),
             "type": ["DatasetSpecification"],
             "label": arr(label_for_input(code, target, package_labels)),
             "description": arr(f"{name} -> {target} (Tapis fileInput on app '{app['id']}')."),
@@ -306,7 +323,8 @@ def build_outputs(meta_variant: dict[str, Any]) -> list[dict[str, Any]]:
     out = []
     for i, o in enumerate(meta_variant.get("outputs", []), start=1):
         spec = {
-            "id": uri(f"{vslug}_output_{o['code']}"),
+            "id": meta_variant.get("catalog_output_ids", {}).get(o["code"])
+            or uri(f"{vslug}_output_{o['code']}"),
             "type": ["DatasetSpecification"],
             "label": arr(o["label"]),
             "has_format": arr(o["ext"]),
@@ -676,7 +694,7 @@ def _repair_config_payload(config: dict[str, Any], software_version_id: str) -> 
 
 def register_configurations(api_base: str, token: str, variants: list[str], dry_run: bool,
                             component_base_url: str) -> None:
-    """Phase 2a: repair known configs; create only the new MODFLOW-USG config."""
+    """Phase 2a: repair known configs; create net-new engine configurations."""
     for variant in variants:
         mv = _META["variants"][variant]
         app = _load(REPO_ROOT / mv["dir"] / "app.json")
@@ -768,7 +786,7 @@ def main(argv: list[str] | None = None) -> int:
     global _META
     parser = argparse.ArgumentParser(description="Register MODFLOW engines into the MINT v2 catalog.")
     parser.add_argument("--variant", action="append",
-                        choices=["modflow6", "modflow-usg", "modflow-2000", "modflow-96"],
+                        choices=["modflow6", "modflow-usg", "modflow-2000", "modflow-2005", "modflow-96"],
                         help="Variant(s) to register (default: all).")
     parser.add_argument("--api-base", default=DEFAULT_API_BASE, help="model-catalog-api /v2.0.0 base URL.")
     parser.add_argument("--component-base-url", default=DEFAULT_COMPONENT_BASE_URL,
@@ -791,7 +809,7 @@ def main(argv: list[str] | None = None) -> int:
             "refusing to use the local e2e-test token."
         )
     token = token or "e2e-test"
-    variants = args.variant or ["modflow6", "modflow-usg", "modflow-2000", "modflow-96"]
+    variants = args.variant or ["modflow6", "modflow-usg", "modflow-2000", "modflow-2005", "modflow-96"]
 
     if args.reset and not args.dry_run:
         reset_catalog()
@@ -821,7 +839,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[wrote] components/{variant}.json")
     post(args.api_base, "models", software, token, args.dry_run)
 
-    # Create only the net-new USG version and attach it to the existing MODFLOW
+    # Create net-new engine versions and attach them to the existing MODFLOW
     # software node explicitly. This avoids losing the version when the parent
     # model already exists and its POST is treated as a conflict.
     for variant in NEW_CONFIG_VARIANTS:
@@ -840,7 +858,7 @@ def main(argv: list[str] | None = None) -> int:
     # Phase 1b: repair the mislabeled live MF2000 software/version records.
     repair_software_labels(args.api_base, token, args.dry_run)
 
-    # Phase 2a: repair known configurations; create only MODFLOW-USG.
+    # Phase 2a: repair known configurations; create net-new configurations.
     print("\n--- Phase 2a: repair/create configurations ---")
     register_configurations(args.api_base, token, variants, args.dry_run, args.component_base_url)
 

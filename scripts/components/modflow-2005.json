@@ -1,0 +1,34 @@
+{
+  "id": "modflow-2005-simulation",
+  "version": "0.0.f8480a8",
+  "name": "MODFLOW-2005",
+  "softwareImage": "docker://ghcr.io/wmobley/modflow-2005:sha-f8480a8",
+  "execSystemId": "ls6",
+  "execSystemLogicalQueue": "vm-small",
+  "inputs": [
+    {
+      "id": "mf2005-simulation-archive",
+      "role": "input",
+      "path": "simulation.zip",
+      "optional": false
+    },
+    {
+      "id": "mf2005-wel",
+      "role": "input",
+      "path": "provided/model.wel",
+      "optional": true
+    },
+    {
+      "id": "mf2005-rch",
+      "role": "input",
+      "path": "provided/model.rch",
+      "optional": true
+    }
+  ],
+  "outputs": [
+    {"id": "lst", "role": "output"},
+    {"id": "hds", "role": "output"},
+    {"id": "cbb", "role": "output"},
+    {"id": "ddown", "role": "output"}
+  ]
+}

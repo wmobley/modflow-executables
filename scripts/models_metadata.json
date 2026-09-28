@@ -4,7 +4,7 @@
   "software": {
     "slug": "MODFLOW",
     "label": "MODFLOW",
-    "description": "The USGS MODFLOW family of modular, finite-difference groundwater flow models. A single Software grouping the supported engine versions (MODFLOW 6, MODFLOW-USG, MODFLOW-2000, MODFLOW-96), each packaged as a containerized Tapis app runnable on TACC.",
+    "description": "The USGS MODFLOW family of modular, finite-difference groundwater flow models. A single Software grouping the supported engine versions (MODFLOW 6, MODFLOW-USG, MODFLOW-2000, MODFLOW-2005, MODFLOW-96), each packaged as a containerized Tapis app runnable on TACC.",
     "keywords": ["groundwater", "hydrology", "finite-difference", "subsurface flow", "USGS", "MODFLOW"],
     "license": "https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits",
     "website": "https://www.usgs.gov/mission-areas/water-resources/science/modflow-and-related-programs",
@@ -65,7 +65,8 @@
     {"name": "land_subsurface_water__recharge_volume_flux", "label": "land_subsurface_water__recharge_volume_flux", "description": "Volume flux (per unit area, per time) of water recharging the saturated subsurface."},
     {"name": "groundwater_well__pumping_volume_flow_rate", "label": "groundwater_well__pumping_volume_flow_rate", "description": "Volumetric pumping (withdrawal/injection) rate at a groundwater well."},
     {"name": "aquifer__storativity", "label": "aquifer__storativity", "description": "Storativity (storage coefficient) of the aquifer.", "reuse_existing": true},
-    {"name": "land_surface_water__evapotranspiration_volume_flux", "label": "land_surface_water__evapotranspiration_volume_flux", "description": "Volume flux of water removed by evapotranspiration at the land surface."}
+    {"name": "land_surface_water__evapotranspiration_volume_flux", "label": "land_surface_water__evapotranspiration_volume_flux", "description": "Volume flux of water removed by evapotranspiration at the land surface."},
+    {"name": "wmobley-standard-variable-groundwater-model-modflow2005-simulation-archive", "label": "MODFLOW 2005 simulation archive", "description": "Complete archive of a MODFLOW 2005 simulation input bundle.", "reuse_existing": true}
   ],
 
   "units": [
@@ -169,6 +170,44 @@
          "region": "Yegua-Jackson Aquifer, Texas",
          "baseline_dir": "/corral-repl/tacc/aci/PT2050/projects/PTDATAX-272/workingGAMs/Yequa_Jackson/Yegua_Jackson_Model_Only/CD-2_ygjk_model/Modflow_2000"}
       ]
+    },
+
+    "modflow-2005": {
+      "dir": "modflow-2005",
+      "version_slug": "modflow_2005",
+      "version_id": "1.12.00",
+      "label": "MODFLOW-2005",
+      "description": "MODFLOW-2005 1.12.00 — the classic USGS modular groundwater model using a name-file-driven package layout.",
+      "usage_notes": "Container runs `mf2005` against the single name file in the required simulation archive. Optional WEL/RCH files replace matching package records.",
+      "source_code": "https://github.com/MODFLOW-ORG/mf2005",
+      "website": "https://www.usgs.gov/software/modflow-2005-usgs-modular-groundwater-model",
+      "binary": "mf2005",
+      "namefile": "model.nam",
+      "archive_binding": {
+        "variable": "wmobley-standard-variable-groundwater-model-modflow2005-simulation-archive",
+        "unit": "dimensionless",
+        "long_name": "MODFLOW 2005 simulation archive",
+        "short_name": "simulation_archive"
+      },
+      "catalog_input_ids": {
+        "simulation-archive": "https://w3id.org/okn/i/mint/wmobley-modflow-2005-simulation-archive",
+        "wel": "https://w3id.org/okn/i/mint/modflow_2005_Well",
+        "rch": "https://w3id.org/okn/i/mint/modflow_2005_Rech"
+      },
+      "catalog_output_ids": {
+        "lst": "https://w3id.org/okn/i/mint/modflow_2005_list",
+        "hds": "https://w3id.org/okn/i/mint/modflow_2005_heads",
+        "cbb": "https://w3id.org/okn/i/mint/modflow_2005_cbb",
+        "ddown": "https://w3id.org/okn/i/mint/modflow_2005_ddown"
+      },
+      "reclassify_as_output": [],
+      "outputs": [
+        {"code": "lst", "ext": "lst", "label": "Listing file (run log)"},
+        {"code": "hds", "ext": "hds", "label": "Simulated heads (binary)"},
+        {"code": "cbb", "ext": "cbc-mf2005", "label": "Cell-by-cell flow budget (binary)"},
+        {"code": "ddown", "ext": "ddn", "label": "Drawdown (binary)"}
+      ],
+      "setups": []
     },
 
     "modflow-96": {

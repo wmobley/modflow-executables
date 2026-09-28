@@ -87,6 +87,16 @@
 - `run.sh` — log: copy_tree_contents, copy_staged_inputs, normalize_arg + 16 more (~3824 tok)
 - `validate_zip.py` — Validate a zip archive is safe to extract before staging it into a MODFLOW 6 run directory. (~566 tok)
 
+## modflow-2005/
+
+- `app.json` — Archive-first MODFLOW-2005 Tapis application manifest.
+- `Dockerfile` — Container build using the MODFLOW-ORG executable distribution.
+- `modflow.py` — Run MODFLOW-2005 with an explicit classic name file.
+- `resolve_nam.py` — Resolve the archive name file and apply WEL/RCH overrides.
+- `run.sh` — Validate, extract, stage, and run an archive-first MODFLOW-2005 job.
+- `validate_archive.py` — Validate MODFLOW-2005 ZIP entries before extraction.
+- `README.md` — MODFLOW-2005 archive-first runtime contract.
+
 ## modflow6/.binder/
 
 - `environment_archive.txt` (~86 tok)
@@ -104,7 +114,7 @@
 ## scripts/
 
 - `.DS_Store` (~1640 tok)
-- `check_apps.py` — Check that the four MODFLOW Tapis apps are registered, enabled, and on the (~3300 tok)
+- `check_apps.py` — Check that the five MODFLOW Tapis apps are registered, enabled, and on the (~3300 tok)
 - `models_metadata.json` (~4068 tok)
 - `register_forecast_to_mint.py` — Register the SUBSIDE subsidence forecast as a MINT model, SVO-typed so its (~3877 tok)
 - `register_gams_to_ckan.py` — Register TWDB GAM input packages to CKAN. (~5181 tok)
@@ -116,6 +126,7 @@
 ## scripts/components/
 
 - `modflow-2000.json` (~976 tok)
+- `modflow-2005.json` — Generated component descriptor for the archive-first app.
 - `modflow-96.json` (~923 tok)
 - `modflow-usg.json` (~1002 tok)
 - `modflow6.json` (~1355 tok)

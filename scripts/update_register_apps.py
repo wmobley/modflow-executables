@@ -15,6 +15,7 @@ APP_DIRS = (
     "modflow6",
     "modflow-usg",
     "modflow-2000",
+    "modflow-2005",
     "modflow-96",
 )
 
@@ -57,7 +58,7 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         choices=APP_DIRS,
         default=list(APP_DIRS),
-        help="Subset of app directories to update/register. Defaults to all four.",
+        help="Subset of app directories to update/register. Defaults to all five.",
     )
     parser.add_argument(
         "--dry-run",

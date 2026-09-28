@@ -28,6 +28,8 @@ jobs:
             image_name: modflow-usg
           - app_dir: modflow-2000
             image_name: modflow-2000
+          - app_dir: modflow-2005
+            image_name: modflow-2005
           - app_dir: modflow-96
             image_name: modflow-96
     steps:

@@ -21,7 +21,7 @@ sys.path.insert(0, str(SCRIPTS))
 import register_to_mint as registration  # noqa: E402
 
 
-VARIANTS = ("modflow6", "modflow-usg", "modflow-2000", "modflow-96")
+VARIANTS = ("modflow6", "modflow-usg", "modflow-2000", "modflow-2005", "modflow-96")
 
 
 class RegistrationPayloadTests(unittest.TestCase):
@@ -32,6 +32,13 @@ class RegistrationPayloadTests(unittest.TestCase):
     def app_and_meta(self, variant: str) -> tuple[dict, dict]:
         meta = registration._META["variants"][variant]
         return registration._load(REPO / meta["dir"] / "app.json"), meta
+
+    def spec_for_code(self, variant: str, specs: list[dict], code: str) -> dict:
+        meta = registration._META["variants"][variant]
+        expected_id = meta.get("catalog_input_ids", {}).get(
+            code, registration.uri(f"{meta['version_slug']}_input_{code}")
+        )
+        return next(spec for spec in specs if spec["id"] == expected_id)
 
     def test_config_payload_binds_to_exact_manifest_app(self) -> None:
         for variant in VARIANTS:
@@ -83,7 +90,17 @@ class RegistrationPayloadTests(unittest.TestCase):
         for variant in VARIANTS:
             app, meta = self.app_and_meta(variant)
             specs = registration.build_inputs(variant, app, meta)
-            by_code = {spec["id"].rsplit("_input_", 1)[1]: spec for spec in specs}
+            by_code = {
+                code: self.spec_for_code(variant, specs, code)
+                for code in ("simulation-archive", "wel", "rch", "rcha", "rchb")
+                if any(
+                    spec["id"]
+                    == registration._META["variants"][variant]
+                    .get("catalog_input_ids", {})
+                    .get(code, registration.uri(f"{registration._META['variants'][variant]['version_slug']}_input_{code}"))
+                    for spec in specs
+                )
+            }
             self.assertIn("simulation-archive", by_code, variant)
             override_codes = {code for code in by_code if code in {"wel", "rch", "rcha", "rchb"}}
             self.assertTrue(override_codes, variant)
@@ -148,6 +165,9 @@ class RegistrationPayloadTests(unittest.TestCase):
                 "groundwater_well__pumping_volume_flow_rate",
                 "land_surface_water__evapotranspiration_volume_flux",
             },
+            "modflow-2005": {
+                "wmobley-standard-variable-groundwater-model-modflow2005-simulation-archive",
+            },
             "modflow-96": {
                 "groundwater__hydraulic_head",
                 "aquifer__hydraulic_conductivity",
@@ -158,10 +178,7 @@ class RegistrationPayloadTests(unittest.TestCase):
         for variant, variables in expected.items():
             app, meta = self.app_and_meta(variant)
             specs = registration.build_inputs(variant, app, meta)
-            archive = next(
-                spec for spec in specs
-                if spec["id"].endswith("_input_simulation-archive")
-            )
+            archive = self.spec_for_code(variant, specs, "simulation-archive")
             actual = {
                 presentation["has_standard_variable"][0].rsplit("/", 1)[-1]
                 for presentation in archive["hasPresentation"]
@@ -172,14 +189,13 @@ class RegistrationPayloadTests(unittest.TestCase):
     def test_archive_presentations_have_distinct_stable_ids(self) -> None:
         for variant in VARIANTS:
             app, meta = self.app_and_meta(variant)
-            archive = next(
-                spec for spec in registration.build_inputs(variant, app, meta)
-                if spec["id"].endswith("_input_simulation-archive")
+            archive = self.spec_for_code(
+                variant, registration.build_inputs(variant, app, meta), "simulation-archive"
             )
             ids = [presentation["id"] for presentation in archive["hasPresentation"]]
             with self.subTest(variant=variant):
                 self.assertEqual(len(ids), len(set(ids)))
-                self.assertTrue(all("in_simulation_archive_" in value for value in ids))
+                self.assertTrue(all("in_simulation_archive" in value for value in ids))
 
     def test_archive_presentations_are_linked_in_one_complete_put(self) -> None:
         calls = []
@@ -209,7 +225,7 @@ class RegistrationPayloadTests(unittest.TestCase):
         )
         self.assertEqual(linked_ids, {item["id"] for item in archive["hasPresentation"]})
 
-    def test_existing_repairs_have_explicit_live_ids_and_usg_is_new_only(self) -> None:
+    def test_existing_repairs_have_explicit_live_ids_and_new_variants_are_explicit(self) -> None:
         """Prevent a rerun from creating replacement IDs for live configurations.
 
         The exact 2000/96 IDs must be filled from the read-only live inventory before
@@ -225,7 +241,7 @@ class RegistrationPayloadTests(unittest.TestCase):
                 self.assertNotEqual(config_id, registration.uri(f"{registration._META['variants'][variant]['version_slug']}_cfg"))
 
         new_variants = getattr(registration, "NEW_CONFIG_VARIANTS", None)
-        self.assertEqual(new_variants, ("modflow-usg",))
+        self.assertEqual(new_variants, ("modflow-usg", "modflow-2005"))
 
     def test_dev_repair_map_targets_existing_configurations_only(self) -> None:
         self.assertEqual(
@@ -273,7 +289,7 @@ class RegistrationPayloadTests(unittest.TestCase):
         for variant in VARIANTS:
             self.assertIn(f"{variant}.json", text)
 
-    def test_dry_run_repairs_existing_configs_and_creates_only_usg(self) -> None:
+    def test_dry_run_repairs_existing_configs_and_creates_new_variants(self) -> None:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             registration.main(["--dry-run"])
@@ -292,6 +308,11 @@ class RegistrationPayloadTests(unittest.TestCase):
         self.assertIn(
             "POST http://localhost:3001/v2.0.0/modelconfigurations  "
             f"({registration.uri('modflow_usg_cfg')})",
+            text,
+        )
+        self.assertIn(
+            "POST http://localhost:3001/v2.0.0/modelconfigurations  "
+            f"({registration.uri('modflow_2005_cfg')})",
             text,
         )
 
