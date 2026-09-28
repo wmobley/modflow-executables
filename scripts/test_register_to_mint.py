@@ -270,6 +270,24 @@ class RegistrationPayloadTests(unittest.TestCase):
         self.assertEqual(payload["softwareVersionId"], ["version"])
         self.assertNotIn("softwareVersion", payload)
 
+    def test_legacy_wire_payload_drops_tapis_bindings_and_unwraps_scalars(self) -> None:
+        previous = registration.LEGACY_API_SCHEMA
+        registration.LEGACY_API_SCHEMA = True
+        try:
+            payload = registration._wire_payload({
+                "tapis_app_version": ["0.0.1"],
+                "has_component_location": ["https://example.org/component.json"],
+                "has_format": ["zip"],
+                "hasInput": [{"id": "archive", "isOptional": False}],
+            })
+        finally:
+            registration.LEGACY_API_SCHEMA = previous
+
+        self.assertNotIn("tapis_app_version", payload)
+        self.assertEqual(payload["has_component_location"], "https://example.org/component.json")
+        self.assertEqual(payload["has_format"], "zip")
+        self.assertEqual(payload["hasInput"][0]["isOptional"], False)
+
     def test_same_as_graphql_patch_uses_scalar_text(self) -> None:
         pairs = [("sv-id", "http://example.org/svo#recharge")]
         mutation = registration.build_same_as_mutation(pairs)

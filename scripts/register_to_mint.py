@@ -33,6 +33,11 @@ Usage:
 
     # one variant:
     python3 scripts/register_to_mint.py --variant modflow6 --dry-run
+
+    # hosted MINT dev catalog (legacy REST mapper):
+    MINT_API_TOKEN=... python3 scripts/register_to_mint.py \
+        --variant modflow-2005 --legacy-api-schema \
+        --api-base https://mintdevapi.pods.portals.tapis.io/v2.0.0
 """
 from __future__ import annotations
 
@@ -59,6 +64,18 @@ DEFAULT_COMPONENT_BASE_URL = os.environ.get(
     "MODFLOW_COMPONENT_BASE_URL",
     "https://raw.githubusercontent.com/wmobley/modflow-suite/main/modflow-executables/scripts/components",
 )
+
+# The hosted MINT dev catalog currently runs an older REST mapper than the
+# local model-catalog-api. Keep the compatibility switch explicit so local
+# registration continues to exercise the current schema while hosted writes
+# can use the deployed schema without a second registration script.
+LEGACY_API_SCHEMA = False
+LEGACY_SCALAR_KEYS = {
+    "label", "description", "keywords", "license", "website", "usage_notes",
+    "version_id", "has_usage_notes", "has_source_code", "has_data_type",
+    "has_default_value", "parameter_type", "has_region", "has_format", "position",
+    "has_component_location", "has_implementation_script_location", "has_software_image",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -482,13 +499,45 @@ def build_component(app: dict[str, Any], meta_variant: dict[str, Any]) -> dict[s
 # --------------------------------------------------------------------------- #
 # HTTP
 # --------------------------------------------------------------------------- #
+def _legacy_payload(value: Any) -> Any:
+    """Adapt current payloads to the hosted legacy REST schema.
+
+    The deployed API serializes scalar columns as camelCase, but its write
+    mapper accepts those scalar columns using their underlying snake_case
+    names. Relationship keys are already emitted in the API's camelCase form.
+    The only known incompatibility is the newer Tapis binding columns.
+    """
+    if isinstance(value, list):
+        return [_legacy_payload(item) for item in value]
+    if isinstance(value, dict):
+        converted: dict[str, Any] = {}
+        for key, item in value.items():
+            # These execution-binding columns exist in the newer local mapper
+            # but not in the hosted legacy model-catalog schema.
+            if key in {"tapis_app_id", "tapis_app_version"}:
+                continue
+            nested = _legacy_payload(item)
+            # The hosted mapper exposes these as one-element arrays on reads,
+            # but accepts scalar values on updates.
+            if key in LEGACY_SCALAR_KEYS and isinstance(nested, list):
+                converted[key] = nested[0] if nested else None
+            else:
+                converted[key] = nested
+        return converted
+    return value
+
+
+def _wire_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    return _legacy_payload(payload) if LEGACY_API_SCHEMA else payload
+
+
 def post(api_base: str, resource: str, payload: dict[str, Any], token: str, dry_run: bool) -> None:
     label = (payload.get("label") or [payload.get("id")])[0]
     if dry_run:
         print(f"[dry-run] POST {api_base}/{resource}  ({payload['id']})")
         print(json.dumps(payload, indent=2))
         return
-    data = json.dumps(payload).encode()
+    data = json.dumps(_wire_payload(payload)).encode()
     req = urllib.request.Request(
         f"{api_base}/{resource}", data=data, method="POST",
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
@@ -662,7 +711,7 @@ def _put(api_base: str, resource: str, entity_id: str, payload: dict[str, Any],
     if dry_run:
         print(f"[dry-run] PUT {api_base}/{resource}/{encoded}  ({entity_id})")
         return
-    data = json.dumps(payload).encode()
+    data = json.dumps(_wire_payload(payload)).encode()
     req = urllib.request.Request(
         f"{api_base}/{resource}/{encoded}", data=data, method="PUT",
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
@@ -783,7 +832,7 @@ _META: dict[str, Any] = {}
 
 
 def main(argv: list[str] | None = None) -> int:
-    global _META
+    global _META, LEGACY_API_SCHEMA
     parser = argparse.ArgumentParser(description="Register MODFLOW engines into the MINT v2 catalog.")
     parser.add_argument("--variant", action="append",
                         choices=["modflow6", "modflow-usg", "modflow-2000", "modflow-2005", "modflow-96"],
@@ -793,11 +842,14 @@ def main(argv: list[str] | None = None) -> int:
                         help="Base URL where the generated component descriptors are served.")
     parser.add_argument("--dry-run", action="store_true", help="Print payloads; make no network calls.")
     parser.add_argument("--no-components", action="store_true", help="Do not (re)write component descriptors.")
+    parser.add_argument("--legacy-api-schema", action="store_true",
+                        help="Use hosted legacy MINT REST field names and omit unsupported Tapis binding columns.")
     parser.add_argument("--reset", action="store_true",
                         help="Delete existing MODFLOW catalog rows via Hasura before registering "
                              "(needs HASURA_GRAPHQL_URL + HASURA_ADMIN_SECRET; the API inserts "
                              "ON CONFLICT DO NOTHING, so a reset is required to re-link/refresh).")
     args = parser.parse_args(argv)
+    LEGACY_API_SCHEMA = args.legacy_api_schema
 
     _META = _load(METADATA_PATH)
     token = os.environ.get("MINT_API_TOKEN") or os.environ.get("TOKEN")
@@ -870,13 +922,18 @@ def main(argv: list[str] | None = None) -> int:
     print("\n--- Phase 2c: variable presentations ---")
     register_presentations(args.api_base, token, variants, args.dry_run)
 
-    # Phase 3: Patch SVO scalar links (has_standard_variable, uses_unit, same_as)
-    if not args.dry_run:
+    # Phase 3: Patch SVO scalar links (has_standard_variable, uses_unit, same_as).
+    # The local stack exposes these columns through Hasura. The hosted legacy
+    # catalog does not expose that Hasura endpoint; its REST relationships are
+    # already represented by the VariablePresentation links created above.
+    if not args.dry_run and not LEGACY_API_SCHEMA:
         print("\n--- Phase 3: SVO patches ---")
         vps: list[tuple[str, str, str]] = []
         _collect_vps_from_variants(variants, vps)
         patch_presentation_links(vps)
         patch_standard_variable_same_as()
+    elif LEGACY_API_SCHEMA:
+        print("\n--- Phase 3: SVO patches skipped (hosted legacy API has no local Hasura endpoint) ---")
 
     print("\nDone." + (" (dry-run, no changes made)" if args.dry_run else ""))
     return 0
