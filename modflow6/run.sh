@@ -178,6 +178,14 @@ function resolve_extracted_root() {
 	printf '%s' "$current"
 }
 
+function cleanup_stage_dir() {
+	local path="$1"
+	# Archive entries may mark directories read-only. Normalize ownership
+	# permissions before cleanup so a failed extractor cannot strand the job.
+	chmod -R u+rwX "$path" 2>/dev/null || true
+	rm -rf -- "$path"
+}
+
 function safe_extract() {
 	local archive_path="$1"
 	local dest_dir="$2"
@@ -200,11 +208,11 @@ function safe_extract() {
 		zip)
 			if ! unzip -q "$archive_path" -d "$stage_dir" 2>/dev/null; then
 				log "unzip failed for $label, falling back to 7z"
-				rm -rf "$stage_dir"
+				cleanup_stage_dir "$stage_dir"
 				mkdir -p "$stage_dir"
 				if ! 7z x -y -o"$stage_dir" "$archive_path" > /dev/null 2>&1; then
 					log "ERROR: both unzip and 7z failed for $label"
-					rm -rf "$stage_dir"
+					cleanup_stage_dir "$stage_dir"
 					return 1
 				fi
 			fi
@@ -214,7 +222,7 @@ function safe_extract() {
 			;;
 		*)
 			log "ERROR: unrecognized archive format for $label"
-			rm -rf "$stage_dir"
+			cleanup_stage_dir "$stage_dir"
 			return 1
 			;;
 	esac
@@ -223,7 +231,7 @@ function safe_extract() {
 
 	if find "$stage_dir" -type l -print -quit | grep -q .; then
 		log "ERROR: $label contains a symlink entry after extraction; refusing to stage it"
-		rm -rf "$stage_dir"
+		cleanup_stage_dir "$stage_dir"
 		return 1
 	fi
 
@@ -235,7 +243,7 @@ function safe_extract() {
 	log "Staging validated contents of $label into $dest_dir"
 	mkdir -p "$dest_dir"
 	cp -RP "$content_root/." "$dest_dir/"
-	rm -rf "$stage_dir"
+	cleanup_stage_dir "$stage_dir"
 }
 
 function fetch_archive_from_url() {
