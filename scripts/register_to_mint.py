@@ -60,10 +60,20 @@ URI_BASE = "https://w3id.org/okn/i/mint/"
 SVO_VAR_NS = "https://www.geoscienceontology.org/svo/svl/variable/"  # SVO variable IRIs
 UNIT_NS = "https://w3id.org/okn/i/mint/unit/"
 DEFAULT_API_BASE = os.environ.get("MINT_CATALOG_API_BASE", "http://localhost:3001/v2.0.0")
-DEFAULT_COMPONENT_BASE_URL = os.environ.get(
-    "MODFLOW_COMPONENT_BASE_URL",
-    "https://raw.githubusercontent.com/wmobley/modflow-suite/main/modflow-executables/scripts/components",
-)
+# The Ensemble Manager Tapis path fetches has_component_location and reads
+# `{result: ...}` from it, so it must be a Tapis API response (the app
+# endpoint), not a bare descriptor file. A base URL (flag/env) overrides this
+# and serves the generated descriptors from scripts/components/ instead.
+TAPIS_BASE_URL = os.environ.get("TAPIS_BASE_URL", "https://portals.tapis.io").rstrip("/")
+DEFAULT_COMPONENT_BASE_URL = os.environ.get("MODFLOW_COMPONENT_BASE_URL") or None
+
+
+def component_location(app: dict[str, Any], variant: str, component_base_url: str | None) -> str:
+    """URL stored in has_component_location for one engine variant."""
+    if component_base_url:
+        return f"{component_base_url.rstrip('/')}/{variant}.json"
+    return f"{TAPIS_BASE_URL}/v3/apps/{app['id']}/{app['version']}"
+
 
 # The hosted MINT dev catalog currently runs an older REST mapper than the
 # local model-catalog-api. Keep the compatibility switch explicit so local
@@ -742,12 +752,12 @@ def _repair_config_payload(config: dict[str, Any], software_version_id: str) -> 
 
 
 def register_configurations(api_base: str, token: str, variants: list[str], dry_run: bool,
-                            component_base_url: str) -> None:
+                            component_base_url: str | None) -> None:
     """Phase 2a: repair known configs; create net-new engine configurations."""
     for variant in variants:
         mv = _META["variants"][variant]
         app = _load(REPO_ROOT / mv["dir"] / "app.json")
-        component_url = f"{component_base_url.rstrip('/')}/{variant}.json"
+        component_url = component_location(app, variant, component_base_url)
         if variant in NEW_CONFIG_VARIANTS:
             config = build_config_node(variant, app, mv, component_url)
             post(api_base, "modelconfigurations", config, token, dry_run)
@@ -839,7 +849,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="Variant(s) to register (default: all).")
     parser.add_argument("--api-base", default=DEFAULT_API_BASE, help="model-catalog-api /v2.0.0 base URL.")
     parser.add_argument("--component-base-url", default=DEFAULT_COMPONENT_BASE_URL,
-                        help="Base URL where the generated component descriptors are served.")
+                        help="Serve component descriptors from this base URL instead of using the Tapis app "
+                             "endpoint (default: https://portals.tapis.io/v3/apps/<id>/<version>).")
     parser.add_argument("--dry-run", action="store_true", help="Print payloads; make no network calls.")
     parser.add_argument("--no-components", action="store_true", help="Do not (re)write component descriptors.")
     parser.add_argument("--legacy-api-schema", action="store_true",
@@ -883,7 +894,7 @@ def main(argv: list[str] | None = None) -> int:
         mv = _META["variants"][variant]
         app = _load(REPO_ROOT / mv["dir"] / "app.json")
         component = build_component(app, mv)
-        component_url = f"{args.component_base_url.rstrip('/')}/{variant}.json"
+        component_url = component_location(app, variant, args.component_base_url)
         if args.dry_run:
             print(f"[dry-run] component {variant}.json -> {component_url}")
         elif not args.no_components:
@@ -897,7 +908,7 @@ def main(argv: list[str] | None = None) -> int:
     for variant in NEW_CONFIG_VARIANTS:
         mv = _META["variants"][variant]
         app = _load(REPO_ROOT / mv["dir"] / "app.json")
-        component_url = f"{args.component_base_url.rstrip('/')}/{variant}.json"
+        component_url = component_location(app, variant, args.component_base_url)
         version = build_version_node(variant, app, mv, component_url)
         # software_id is a scalar FK on modelcatalog_software_version. Using
         # it directly keeps the new version attached to the MODFLOW model on

@@ -354,6 +354,28 @@ class RegistrationPayloadTests(unittest.TestCase):
             text,
         )
 
+    def test_default_component_location_is_the_tapis_app_endpoint(self) -> None:
+        # Ensemble Manager reads `{result: ...}` from has_component_location,
+        # so the default must be the Tapis app API, not a raw descriptor file.
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            registration.main(["--variant", "modflow6", "--dry-run"])
+        text = output.getvalue()
+        self.assertIn("/v3/apps/modflow6-simulation/", text)
+        self.assertNotIn("raw.githubusercontent.com", text)
+        self.assertNotIn("wmobley/modflow-suite", text)
+
+    def test_component_location_helper(self) -> None:
+        app = {"id": "modflow6-simulation", "version": "0.0.x"}
+        self.assertEqual(
+            registration.component_location(app, "modflow6", None),
+            f"{registration.TAPIS_BASE_URL}/v3/apps/modflow6-simulation/0.0.x",
+        )
+        self.assertEqual(
+            registration.component_location(app, "modflow6", "https://c.example/v2/"),
+            "https://c.example/v2/modflow6.json",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
