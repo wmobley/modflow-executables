@@ -39,6 +39,18 @@ into the description ("Start date: ...").
 Output ordering matters: the EM's default output_name is output_files[0], so the
 YAML lists the displacement GeoTIFF first.
 
+Secrets: a configuration's YAML `hasSecret` entries are emitted as Parameter rows
+with parameter_type "secret" (a reserved sentinel the Ensemble Manager moves out
+of the parameter stream; see the svo-adapter secrets-store spec). label = secret
+name, has_accepted_values = sorted "<field>=<ENV_KEY>" map, usage_notes
+"source=owner_only", never a default value. Names/fields/env keys are validated.
+
+Owner: the REST API pins configuration.owner_username to the API caller on
+insert, which may be a service account. A model-owner secret is stored for the
+configuration's owner, so the Hasura patch phase sets owner_username on every
+configuration to --owner-username (the SUBSIDE admin). Required unless --dry-run;
+default from env MINT_OWNER_USERNAME.
+
 Not registered (not representable via the REST columns used here): Regions,
 Constraints, parameter units, DatasetSpecification dimensionality.
 
@@ -46,6 +58,7 @@ Usage:
     python3 scripts/register_subside_to_mint.py --dry-run
     MINT_API_TOKEN=... python3 scripts/register_subside_to_mint.py \\
         --api-base https://mintdevapi.pods.portals.tapis.io/v2.0.0 --legacy-api-schema
+    # (add --owner-username <tapis user> or MINT_OWNER_USERNAME for real runs)
     # --reset deletes the OPERA rows (by the YAML's exact ids) via Hasura first
     # (HASURA_GRAPHQL_URL + HASURA_ADMIN_SECRET).
 """
@@ -54,6 +67,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -118,6 +132,39 @@ def build_parameter(p: dict[str, Any], pos: int) -> dict[str, Any]:
     return out
 
 
+SECRET_NAME_RE = re.compile(r"^[a-z0-9_-]{1,64}$")
+SECRET_FIELD_RE = re.compile(r"^[a-z0-9_]{1,32}$")
+SECRET_ENV_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
+
+
+def build_secret(sec: dict[str, Any], pos: int) -> dict[str, Any]:
+    """A `hasSecret` YAML entry as a catalog Parameter row (parameter_type "secret")."""
+    name = sec["name"]
+    if not SECRET_NAME_RE.match(str(name)):
+        raise SystemExit(f"secret name {name!r} must match {SECRET_NAME_RE.pattern}")
+    env = sec.get("env") or {}
+    if not env:
+        raise SystemExit(f"secret {name!r} declares no env fields")
+    for field, key in env.items():
+        if not SECRET_FIELD_RE.match(str(field)):
+            raise SystemExit(f"secret {name!r} field {field!r} must match {SECRET_FIELD_RE.pattern}")
+        if not SECRET_ENV_RE.match(str(key)):
+            raise SystemExit(f"secret {name!r} env key {key!r} must match {SECRET_ENV_RE.pattern}")
+    if sec.get("source", "owner_only") != "owner_only":
+        raise SystemExit(f"secret {name!r}: only source=owner_only is supported")
+    return {
+        "id": uri(sec["id"]),
+        "type": ["Parameter"],
+        "label": arr(name),
+        "description": arr(_text(sec["description"])),
+        "has_data_type": arr("string"),
+        "parameter_type": arr("secret"),
+        "has_accepted_values": [f"{f}={env[f]}" for f in sorted(env)],
+        "usage_notes": arr("source=owner_only"),
+        "position": arr(str(pos)),
+    }
+
+
 def build_presentation(spec: dict[str, Any]) -> dict[str, Any] | None:
     binding = spec.get("variablePresentation")
     if not binding:
@@ -165,7 +212,8 @@ def build_config(cfg: dict[str, Any]) -> dict[str, Any]:
         "has_software_image": arr(image),
         "has_component_location": arr(_first(cfg, "hasComponentLocation")),
         "has_implementation_script_location": arr(_first(cfg, "hasImplementationScriptLocation")),
-        "hasParameter": [build_parameter(p, i) for i, p in enumerate(params, 1)],
+        "hasParameter": [build_parameter(p, i) for i, p in enumerate(params, 1)]
+        + [build_secret(sec, len(params) + i) for i, sec in enumerate(cfg.get("hasSecret", []), 1)],
     }
 
 
@@ -245,7 +293,7 @@ def _hasura(mutation: str) -> dict[str, Any]:
     return body["data"]
 
 
-def build_patch_plan(model: dict[str, Any]) -> list[tuple[str, str]]:
+def build_patch_plan(model: dict[str, Any], owner_username: str | None = None) -> list[tuple[str, str]]:
     """(description, Hasura mutation) pairs applied after the REST creates."""
     plan: list[tuple[str, str]] = []
     # The deployed dev REST mapper does not reliably set parent FKs from a
@@ -265,6 +313,14 @@ def build_patch_plan(model: dict[str, Any]) -> list[tuple[str, str]]:
         for i, cfg in enumerate(iter_configs(model))
     ]
     plan.append(("hierarchy parent FKs", "mutation { " + " ".join(fk_parts) + " }"))
+    if owner_username:
+        # The REST insert pins owner_username to the API caller (possibly a service
+        # account); make the SUBSIDE admin the owner so a model-owner secret can be stored.
+        plan.append(("configuration owner_username", "mutation { " + " ".join(
+            f"o{i}: update_modelcatalog_configuration("
+            f"where:{{id:{{_eq:{json.dumps(uri(cfg['id']))}}}}}, "
+            f"_set:{{owner_username:{json.dumps(owner_username)}}}){{affected_rows}}"
+            for i, cfg in enumerate(iter_configs(model))) + " }"))
     for cfg in iter_configs(model):
         c = build_config(cfg)
         plan.append((f"configuration bindings {c['id']}", (
@@ -297,7 +353,7 @@ def build_reset_mutation(model: dict[str, Any]) -> str:
     cfg_ids, spec_ids, param_ids, vp_ids = [], [], [], []
     for cfg in iter_configs(model):
         cfg_ids.append(uri(cfg["id"]))
-        param_ids += [uri(p["id"]) for p in cfg.get("hasParameter", [])]
+        param_ids += [uri(p["id"]) for p in cfg.get("hasParameter", []) + cfg.get("hasSecret", [])]
         for spec in cfg.get("hasInput", []) + cfg.get("hasOutput", []):
             spec_ids.append(uri(spec["id"]))
             if build_presentation(spec):
@@ -358,11 +414,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--legacy-api-schema", action="store_true",
                     help="Use hosted legacy MINT REST field names (drops tapis_app_* from the wire payload; "
                          "the Hasura patch phase restores them).")
+    ap.add_argument("--owner-username", default=os.environ.get("MINT_OWNER_USERNAME"),
+                    help="Tapis username to set as owner_username on the configurations via Hasura "
+                         "(default $MINT_OWNER_USERNAME; required unless --dry-run).")
     ap.add_argument("--reset", action="store_true",
                     help="Delete the OPERA catalog rows via Hasura before registering.")
     args = ap.parse_args(argv)
     R.LEGACY_API_SCHEMA = args.legacy_api_schema
 
+    if not args.owner_username and not args.dry_run:
+        raise SystemExit("--owner-username (or MINT_OWNER_USERNAME) is required for non-dry-run registration.")
     token = os.environ.get("MINT_API_TOKEN") or os.environ.get("TOKEN")
     if not token and not args.dry_run and not args.api_base.startswith(
         ("http://localhost", "http://127.0.0.1")
@@ -396,7 +457,7 @@ def main(argv: list[str] | None = None) -> int:
     register_io(args.api_base, token, model, args.dry_run)
 
     print("\n--- Phase 4: Hasura patches ---")
-    for desc, mutation in build_patch_plan(model):
+    for desc, mutation in build_patch_plan(model, args.owner_username):
         if args.dry_run:
             print(f"[dry-run] HASURA {desc}\n{mutation}")
         else:

@@ -77,7 +77,7 @@ class OperaRegistrationTests(unittest.TestCase):
         for cfg_id, cfg in self.configs.items():
             with self.subTest(cfg=cfg_id):
                 payload = reg.build_config(cfg)
-                names = [p["label"][0] for p in payload["hasParameter"]]
+                names = [p["label"][0] for p in payload["hasParameter"] if p["parameter_type"] != ["secret"]]
                 self.assertEqual(len(names), len(set(names)))
                 self.assertEqual(set(names), self.app_env_keys(cfg_id) - NON_PARAM_ENV_KEYS)
 
@@ -162,3 +162,76 @@ def test_patch_plan_sets_hierarchy_parent_fks() -> None:
     assert "update_modelcatalog_software_version" in fk and "software_id:" in fk
     assert fk.count("update_modelcatalog_configuration") == 2 and "software_version_id:" in fk
     assert reg.uri(model["id"]) in fk and reg.uri(model["hasVersion"][0]["id"]) in fk
+
+
+SECRET_ENV = {"username": "EARTHDATA_USERNAME", "password": "EARTHDATA_PASSWORD"}
+
+
+def _app_env(cfg_id: str) -> dict:
+    app = json.loads((reg.YAML_PATH.parent / APP_DIRS[cfg_id] / "app-cpu.json").read_text())
+    return {e["key"]: e for e in app["jobAttributes"]["parameterSet"]["envVariables"]}
+
+
+def test_each_config_has_one_earthdata_secret_parameter() -> None:
+    model = reg.load_yaml()
+    for cfg in reg.iter_configs(model):
+        payload = reg.build_config(cfg)
+        secrets = [p for p in payload["hasParameter"] if p["parameter_type"] == ["secret"]]
+        assert len(secrets) == 1, cfg["id"]
+        s = secrets[0]
+        assert s["label"] == ["earthdata"]
+        assert s["has_accepted_values"] == ["password=EARTHDATA_PASSWORD", "username=EARTHDATA_USERNAME"]
+        assert s["usage_notes"] == ["source=owner_only"]
+        assert "has_default_value" not in s
+        assert s["has_data_type"] == ["string"]
+        ordinary = [int(p["position"][0]) for p in payload["hasParameter"] if p is not s]
+        assert int(s["position"][0]) == max(ordinary) + 1
+        env = _app_env(cfg["id"])
+        for key in SECRET_ENV.values():
+            assert env[key]["inputMode"] == "INCLUDE_ON_DEMAND", (cfg["id"], key)
+        assert cfg["hasSecret"][0]["env"] == SECRET_ENV
+
+
+def test_secret_validation_fails_fast() -> None:
+    import pytest
+    good = {"id": "x", "name": "earthdata", "description": "d", "env": dict(SECRET_ENV)}
+    reg.build_secret(good, 1)
+    for bad in ({"name": "Bad Name"}, {"env": {"User": "A"}}, {"env": {"user": "lower"}}, {"env": {}}):
+        with pytest.raises(SystemExit):
+            reg.build_secret({**good, **bad}, 1)
+
+
+def test_patch_plan_sets_owner_username_on_both_configs() -> None:
+    model = reg.load_yaml()
+    assert "configuration owner_username" not in dict(reg.build_patch_plan(model))
+    mutation = dict(reg.build_patch_plan(model, "wmobley"))["configuration owner_username"]
+    for cid in APP_DIRS:
+        assert reg.uri(cid) in mutation
+    assert mutation.count('owner_username:"wmobley"') == 2
+
+
+def test_legacy_wire_secret_keeps_scalar_type_and_list_accepted_values() -> None:
+    model = reg.load_yaml()
+    R.LEGACY_API_SCHEMA = False
+    wire = json.loads(json.dumps(R._legacy_payload(reg.legacy_parameter_scalars(reg.build_software_tree(model)))))
+    secrets = [p for c in wire["hasVersion"][0]["hasConfiguration"] for p in c["hasParameter"]
+               if p["label"] in ("earthdata", ["earthdata"])]
+    assert len(secrets) == 2
+    for s in secrets:
+        assert s["parameter_type"] == "secret"
+        assert isinstance(s["has_accepted_values"], list)
+
+
+def test_dry_run_with_owner_username() -> None:
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert reg.main(["--dry-run", "--legacy-api-schema", "--owner-username", "wmobley"]) == 0
+    R.LEGACY_API_SCHEMA = False
+    assert "configuration owner_username" in out.getvalue()
+
+
+def test_owner_required_when_not_dry_run(monkeypatch) -> None:
+    import pytest
+    monkeypatch.delenv("MINT_OWNER_USERNAME", raising=False)
+    with pytest.raises(SystemExit):
+        reg.main([])
