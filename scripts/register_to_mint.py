@@ -509,6 +509,18 @@ def build_component(app: dict[str, Any], meta_variant: dict[str, Any]) -> dict[s
 # --------------------------------------------------------------------------- #
 # HTTP
 # --------------------------------------------------------------------------- #
+# text[] columns the hosted mapper passes straight to Hasura, which expects a
+# Postgres array literal ("{a,b}") rather than a JSON list ("A string is
+# expected for type: _text"). Same convention as the UI's toPgTextArray.
+LEGACY_TEXT_ARRAY_KEYS = {"has_accepted_values"}
+
+
+def pg_text_array(items: list[Any]) -> str:
+    def q(x: Any) -> str:
+        return '"' + str(x).replace("\\", "\\\\").replace('"', '\\"') + '"'
+    return "{" + ",".join(q(x) for x in items) + "}"
+
+
 def _legacy_payload(value: Any) -> Any:
     """Adapt current payloads to the hosted legacy REST schema.
 
@@ -531,6 +543,8 @@ def _legacy_payload(value: Any) -> Any:
             # but accepts scalar values on updates.
             if key in LEGACY_SCALAR_KEYS and isinstance(nested, list):
                 converted[key] = nested[0] if nested else None
+            elif key in LEGACY_TEXT_ARRAY_KEYS and isinstance(nested, list):
+                converted[key] = pg_text_array(nested)
             else:
                 converted[key] = nested
         return converted

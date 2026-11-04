@@ -151,7 +151,8 @@ def test_legacy_wire_payload_uses_scalar_min_max_but_keeps_accepted_values_list(
                 assert not isinstance(p[k], list), (p["id"], k, p[k])
         if "has_accepted_values" in p:
             seen_accepted = True
-            assert isinstance(p["has_accepted_values"], list)
+            # text[] column: the hosted mapper needs a Postgres array literal
+            assert isinstance(p["has_accepted_values"], str) and p["has_accepted_values"].startswith("{")
     assert seen_minmax and seen_accepted
 
 
@@ -219,7 +220,7 @@ def test_legacy_wire_secret_keeps_scalar_type_and_list_accepted_values() -> None
     assert len(secrets) == 2
     for s in secrets:
         assert s["parameter_type"] == "secret"
-        assert isinstance(s["has_accepted_values"], list)
+        assert s["has_accepted_values"] == '{"password=EARTHDATA_PASSWORD","username=EARTHDATA_USERNAME"}'
 
 
 def test_dry_run_with_owner_username() -> None:
@@ -235,3 +236,7 @@ def test_owner_required_when_not_dry_run(monkeypatch) -> None:
     monkeypatch.delenv("MINT_OWNER_USERNAME", raising=False)
     with pytest.raises(SystemExit):
         reg.main([])
+
+
+def test_pg_text_array_escapes_quotes_and_backslashes() -> None:
+    assert reg.R.pg_text_array(["a", 'b"c', "d\\e"]) == '{"a","b\\"c","d\\\\e"}'
