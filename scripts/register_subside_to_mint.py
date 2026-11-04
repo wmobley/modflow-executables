@@ -169,6 +169,27 @@ def build_config(cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# modelcatalog_parameter.has_{minimum,maximum}_accepted_value are scalar TEXT
+# columns on dev, while has_accepted_values is text[]. The MODFLOW legacy
+# mapper never had to send min/max, so _legacy_payload leaves them as lists.
+LEGACY_SCALAR_PARAMETER_KEYS = ("has_minimum_accepted_value", "has_maximum_accepted_value")
+
+
+def legacy_parameter_scalars(node: Any) -> Any:
+    """Unwrap one-element min/max lists to scalars (hosted --legacy-api-schema)."""
+    if isinstance(node, list):
+        return [legacy_parameter_scalars(x) for x in node]
+    if isinstance(node, dict):
+        out = {}
+        for k, v in node.items():
+            if k in LEGACY_SCALAR_PARAMETER_KEYS and isinstance(v, list) and len(v) == 1:
+                out[k] = v[0]
+            else:
+                out[k] = legacy_parameter_scalars(v)
+        return out
+    return node
+
+
 def build_software_tree(model: dict[str, Any]) -> dict[str, Any]:
     """Software -> SoftwareVersion -> ModelConfiguration, nested top-down."""
     ver = model["hasVersion"][0]
@@ -227,6 +248,23 @@ def _hasura(mutation: str) -> dict[str, Any]:
 def build_patch_plan(model: dict[str, Any]) -> list[tuple[str, str]]:
     """(description, Hasura mutation) pairs applied after the REST creates."""
     plan: list[tuple[str, str]] = []
+    # The deployed dev REST mapper does not reliably set parent FKs from a
+    # nested create (register_to_mint.py sets softwareId/softwareVersionId
+    # explicitly for the same reason). Set them outright so the hierarchy can
+    # never be orphaned, whichever way the mapper behaved.
+    software_id = uri(model["id"])
+    version_id = uri(model["hasVersion"][0]["id"])
+    fk_parts = [
+        "v: update_modelcatalog_software_version("
+        f"where:{{id:{{_eq:{json.dumps(version_id)}}}}}, "
+        f"_set:{{software_id:{json.dumps(software_id)}}}){{affected_rows}}"
+    ] + [
+        f"c{i}: update_modelcatalog_configuration("
+        f"where:{{id:{{_eq:{json.dumps(uri(cfg['id']))}}}}}, "
+        f"_set:{{software_version_id:{json.dumps(version_id)}}}){{affected_rows}}"
+        for i, cfg in enumerate(iter_configs(model))
+    ]
+    plan.append(("hierarchy parent FKs", "mutation { " + " ".join(fk_parts) + " }"))
     for cfg in iter_configs(model):
         c = build_config(cfg)
         plan.append((f"configuration bindings {c['id']}", (
@@ -349,7 +387,10 @@ def main(argv: list[str] | None = None) -> int:
         post(args.api_base, "standardvariables", payload, token, args.dry_run)
 
     print("\n--- Phase 2: Software -> Version -> Configurations (nested) ---")
-    post(args.api_base, "models", build_software_tree(model), token, args.dry_run)
+    tree = build_software_tree(model)
+    if args.legacy_api_schema:
+        tree = legacy_parameter_scalars(tree)
+    post(args.api_base, "models", tree, token, args.dry_run)
 
     print("\n--- Phase 3: inputs/outputs + presentations ---")
     register_io(args.api_base, token, model, args.dry_run)

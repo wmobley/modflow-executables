@@ -21,7 +21,10 @@ import register_to_mint as R  # noqa: E402
 
 APP_DIRS = {"opera-disp-s1-h2i-lab": "h2i_lab", "opera-disp-s1-werc": "werc"}
 # Env keys that are not catalog parameters: file input path, and the on-demand conda refresh.
-NON_PARAM_ENV_KEYS = {"AOI_GEOJSON_PATH", "UPDATE_CONDA_ENV"}
+NON_PARAM_ENV_KEYS = {"AOI_GEOJSON_PATH", "UPDATE_CONDA_ENV",
+    # Platform-provided at submit time by the svo-adapter; never a catalog parameter.
+    "EARTHDATA_USERNAME", "EARTHDATA_PASSWORD",
+}
 
 
 class OperaRegistrationTests(unittest.TestCase):
@@ -131,3 +134,31 @@ class OperaRegistrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_legacy_wire_payload_uses_scalar_min_max_but_keeps_accepted_values_list() -> None:
+    import json as _json
+    model = reg.load_yaml()
+    tree = reg.legacy_parameter_scalars(reg.build_software_tree(model))
+    wire = _json.loads(_json.dumps(reg.R._legacy_payload(tree)))
+    params = [p for c in wire["hasVersion"][0]["hasConfiguration"] for p in c.get("hasParameter", [])]
+    assert params, "no parameters in the wire payload"
+    seen_minmax = seen_accepted = False
+    for p in params:
+        for k in reg.LEGACY_SCALAR_PARAMETER_KEYS:
+            if k in p:
+                seen_minmax = True
+                assert not isinstance(p[k], list), (p["id"], k, p[k])
+        if "has_accepted_values" in p:
+            seen_accepted = True
+            assert isinstance(p["has_accepted_values"], list)
+    assert seen_minmax and seen_accepted
+
+
+def test_patch_plan_sets_hierarchy_parent_fks() -> None:
+    model = reg.load_yaml()
+    plan = dict(reg.build_patch_plan(model))
+    fk = plan["hierarchy parent FKs"]
+    assert "update_modelcatalog_software_version" in fk and "software_id:" in fk
+    assert fk.count("update_modelcatalog_configuration") == 2 and "software_version_id:" in fk
+    assert reg.uri(model["id"]) in fk and reg.uri(model["hasVersion"][0]["id"]) in fk
