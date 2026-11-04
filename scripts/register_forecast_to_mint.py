@@ -235,7 +235,7 @@ def patch_links() -> None:
     for i, sv in enumerate(ALL_FORECAST_SVOS):
         parts.append(
             f"s_{i}: update_modelcatalog_standard_variable("
-            f"where:{{id:{{_eq:{json.dumps(uri(sv['name']))}}}}}, _set:{{same_as:[{json.dumps(_svo_iri(sv['name']))}]}}"
+            f"where:{{id:{{_eq:{json.dumps(uri(sv['name']))}}}}}, _set:{{same_as:{json.dumps(R.pg_text_array([_svo_iri(sv['name'])]))}}}"
             "){affected_rows}"
         )
     _hasura("mutation { " + " ".join(parts) + " }")
