@@ -181,7 +181,7 @@ def test_each_config_has_one_earthdata_secret_parameter() -> None:
         s = secrets[0]
         assert s["label"] == ["earthdata"]
         assert s["has_accepted_values"] == ["password=EARTHDATA_PASSWORD", "username=EARTHDATA_USERNAME"]
-        assert s["usage_notes"] == ["source=owner_only"]
+        assert "usage_notes" not in s  # no such column on modelcatalog_parameter
         assert "has_default_value" not in s
         assert s["has_data_type"] == ["string"]
         ordinary = [int(p["position"][0]) for p in payload["hasParameter"] if p is not s]

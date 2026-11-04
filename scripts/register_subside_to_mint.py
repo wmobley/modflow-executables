@@ -42,7 +42,7 @@ YAML lists the displacement GeoTIFF first.
 Secrets: a configuration's YAML `hasSecret` entries are emitted as Parameter rows
 with parameter_type "secret" (a reserved sentinel the Ensemble Manager moves out
 of the parameter stream; see the svo-adapter secrets-store spec). label = secret
-name, has_accepted_values = sorted "<field>=<ENV_KEY>" map, usage_notes
+name, has_accepted_values = sorted "<field>=<ENV_KEY>" map, no default
 "source=owner_only", never a default value. Names/fields/env keys are validated.
 
 Owner: the REST API pins configuration.owner_username to the API caller on
@@ -160,7 +160,8 @@ def build_secret(sec: dict[str, Any], pos: int) -> dict[str, Any]:
         "has_data_type": arr("string"),
         "parameter_type": arr("secret"),
         "has_accepted_values": [f"{f}={env[f]}" for f in sorted(env)],
-        "usage_notes": arr("source=owner_only"),
+        # modelcatalog_parameter has no usage_notes column; Phase A's only
+        # source (owner_only) is the adapter/EM default when no marker is present.
         "position": arr(str(pos)),
     }
 
