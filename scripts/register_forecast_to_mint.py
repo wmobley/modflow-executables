@@ -235,7 +235,7 @@ def patch_links() -> None:
     for i, sv in enumerate(ALL_FORECAST_SVOS):
         parts.append(
             f"s_{i}: update_modelcatalog_standard_variable("
-            f"where:{{id:{{_eq:{json.dumps(uri(sv['name']))}}}}}, _set:{{same_as:[{json.dumps(_svo_iri(sv['name']))}]}}"
+            f"where:{{id:{{_eq:{json.dumps(uri(sv['name']))}}}}}, _set:{{same_as:{json.dumps(R.pg_text_array([_svo_iri(sv['name'])]))}}}"
             "){affected_rows}"
         )
     _hasura("mutation { " + " ".join(parts) + " }")
@@ -247,7 +247,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--api-base", default=R.DEFAULT_API_BASE)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--reset", action="store_true")
+    ap.add_argument("--legacy-api-schema", action="store_true",
+                    help="Hosted MINT dev REST mapper: scalar fields instead of arrays (see register_to_mint.py).")
     args = ap.parse_args(argv)
+    R.LEGACY_API_SCHEMA = args.legacy_api_schema
     token = os.environ.get("MINT_API_TOKEN") or os.environ.get("TOKEN") or "e2e-test"
 
     if args.reset and not args.dry_run:
