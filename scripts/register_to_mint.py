@@ -323,6 +323,9 @@ def build_inputs(variant: str, app: dict[str, Any], meta_variant: dict[str, Any]
         name = fi["name"]
         if name in reclass:
             continue
+        if fi.get("inputMode") == "FIXED":
+            # FIXED app inputs are baked into the job; never catalog inputs.
+            continue
         code = code_from_input_name(name)
         if code not in CATALOG_INPUT_CODES:
             continue
@@ -337,6 +340,8 @@ def build_inputs(variant: str, app: dict[str, Any], meta_variant: dict[str, Any]
             "has_format": arr(fmt_for_input(target, code)),
             "position": arr(str(pos)),
             "isOptional": fi.get("inputMode", "OPTIONAL") == "OPTIONAL",
+            # Junction attribute (sd:hasInput), not a DatasetSpecification column.
+            "appInputName": name,
         }
         presentations = build_input_presentations(code, vslug, app, meta_variant)
         if presentations:
@@ -734,6 +739,7 @@ def _put(api_base: str, resource: str, entity_id: str, payload: dict[str, Any],
     label = (payload.get("label") or [entity_id])[0]
     if dry_run:
         print(f"[dry-run] PUT {api_base}/{resource}/{encoded}  ({entity_id})")
+        print(f"          {json.dumps(_wire_payload(payload))}")
         return
     data = json.dumps(_wire_payload(payload)).encode()
     req = urllib.request.Request(
@@ -811,14 +817,15 @@ def register_inputs_outputs(api_base: str, token: str, variants: list[str], dry_
         all_specs = inputs + outputs
         for spec in all_specs:
             # Strip hasPresentation — we create VPs separately and link via junction
-            spec_clean = {k: v for k, v in spec.items() if k != "hasPresentation"}
+            spec_clean = {k: v for k, v in spec.items() if k not in ("hasPresentation", "appInputName")}
             post(api_base, "datasetspecifications", spec_clean, token, dry_run)
         target_ids = (uri(f"{mv['version_slug']}_cfg"),) if variant in NEW_CONFIG_VARIANTS else LIVE_CONFIG_IDS[variant]
         for config_id in target_ids:
             if inputs:
                 _put(api_base, "modelconfigurations", config_id, {
                     "id": config_id,
-                    "hasInput": [{"id": s["id"], "isOptional": s.get("isOptional", False)} for s in inputs],
+                    "hasInput": [{"id": s["id"], "isOptional": s.get("isOptional", False),
+                                  "appInputName": s["appInputName"]} for s in inputs],
                 }, token, dry_run)
             if outputs:
                 _put(api_base, "modelconfigurations", config_id, {

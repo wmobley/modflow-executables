@@ -297,6 +297,49 @@ class RegistrationPayloadTests(unittest.TestCase):
         )
         self.assertNotIn("same_as:[", mutation)
 
+    def test_inputs_carry_app_input_name_and_skip_fixed(self) -> None:
+        for variant in VARIANTS:
+            app, meta = self.app_and_meta(variant)
+            specs = registration.build_inputs(variant, app, meta)
+            names = {fi["name"] for fi in app["jobAttributes"]["fileInputs"]}
+            for spec in specs:
+                self.assertIn(spec["appInputName"], names, variant)
+            # No current app has FIXED file inputs, so nothing is skipped by default;
+            # a FIXED one is never a catalog input.
+            fixed = {**app["jobAttributes"]["fileInputs"][0], "inputMode": "FIXED"}
+            patched = {**app, "jobAttributes": {**app["jobAttributes"],
+                                                 "fileInputs": app["jobAttributes"]["fileInputs"] + [fixed]}}
+            without = registration.build_inputs(variant, patched, meta)
+            self.assertEqual(len(without), len(specs), variant)
+            only_fixed = {**app, "jobAttributes": {**app["jobAttributes"], "fileInputs": [fixed]}}
+            self.assertEqual(registration.build_inputs(variant, only_fixed, meta), [])
+
+    def test_hasinput_junction_put_carries_app_input_name(self) -> None:
+        calls = []
+        original_post, original_put = registration.post, registration._put
+        registration.post = lambda *args: calls.append(("post", args))
+        registration._put = lambda *args: calls.append(("put", args))
+        try:
+            registration.register_inputs_outputs("https://catalog.example/v2.0.0", "token", ["modflow6"], False)
+        finally:
+            registration.post, registration._put = original_post, original_put
+        junctions = [a[3]["hasInput"] for k, a in calls if k == "put" and "hasInput" in a[3]]
+        self.assertTrue(junctions)
+        for rows in junctions:
+            self.assertTrue(all(r["appInputName"] and "isOptional" in r for r in rows))
+        posted_specs = [a[3] for k, a in calls if k == "post" and a[1] == "datasetspecifications"]
+        self.assertTrue(all("appInputName" not in spec for spec in posted_specs))
+
+    def test_dry_run_hasinput_payload_has_app_input_name(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            registration.main(["--dry-run"])
+        self.assertIn('"appInputName": "mf6-simulation-archive"', output.getvalue())
+
+    def test_legacy_wire_payload_keeps_app_input_name(self) -> None:
+        payload = registration._legacy_payload({"hasInput": [{"id": "a", "appInputName": "x"}]})
+        self.assertEqual(payload["hasInput"][0]["appInputName"], "x")
+
     def test_dry_run_is_network_free_and_covers_all_variants(self) -> None:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):

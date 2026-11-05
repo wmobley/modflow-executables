@@ -284,9 +284,47 @@ def test_only_input_typing_dry_run_writes_only_the_typing() -> None:
     text = out.getvalue()
     assert "/standardvariables" in text
     assert text.count("/variablepresentations") == 2
-    assert text.count("PUT") == 2 and text.count("/datasetspecifications/") == 2
+    assert text.count("/datasetspecifications/") == 2
+    # one hasInput junction PUT per configuration, carrying the app input binding
+    assert text.count("/modelconfigurations/") == 2 and text.count("PUT") == 4
+    assert text.count('"appInputName": "aoi-geojson"') == 2
     assert "HASURA input presentation standard-variable links" in text
     assert "HASURA standard variable same_as" in text
-    for absent in ("/units", "/models", "/datasetspecifications  (", "/modelconfigurations",
+    for absent in ("/units", "/models", "/datasetspecifications  (",
                    "owner_username", "tapis_app_id", "uses_unit"):
         assert absent not in text
+
+
+def test_aoi_inputs_bind_the_app_file_input() -> None:
+    model = reg.load_yaml()
+    for cfg in reg.iter_configs(model):
+        rows = reg.build_input_junctions(cfg["hasInput"])
+        assert [r["appInputName"] for r in rows] == ["aoi-geojson"]
+        assert all(set(r) == {"id", "isOptional", "appInputName"} for r in rows)
+
+
+def test_junction_omits_app_input_name_when_yaml_has_none() -> None:
+    assert reg.build_input_junctions([{"id": "x", "isOptional": True}]) == [
+        {"id": reg.uri("x"), "isOptional": True}]
+
+
+def test_full_dry_run_hasinput_put_carries_app_input_name() -> None:
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert reg.main(["--dry-run", "--legacy-api-schema"]) == 0
+    R.LEGACY_API_SCHEMA = False
+    assert out.getvalue().count('"appInputName": "aoi-geojson"') == 2
+
+
+def test_duplicate_app_input_name_in_one_configuration_is_rejected() -> None:
+    import copy
+    import pytest
+    model = copy.deepcopy(reg.load_yaml())
+    cfg = next(reg.iter_configs(model))
+    cfg["hasInput"].append({**cfg["hasInput"][0], "id": "second-aoi"})
+    with pytest.raises(SystemExit, match="aoi-geojson"):
+        reg.validate_app_input_names(model)
+
+
+def test_same_app_input_name_in_different_configurations_is_allowed() -> None:
+    reg.validate_app_input_names(reg.load_yaml())  # both configs bind aoi-geojson
