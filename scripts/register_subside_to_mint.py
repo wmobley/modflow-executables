@@ -29,6 +29,18 @@ Phases (same shape as the MODFLOW registration):
        - variable_presentation has_standard_variable + uses_unit scalar links
        - standard_variable same_as -> SVO IRI
 
+Typed inputs: the two AOI GeoJSON inputs carry a variablePresentation bound to the
+standard variable `area_of_interest__boundary` (no unit; the presentation's
+uses_unit is left unset). Phases 1/3/4 create that variable and register those
+presentations like the output ones.
+
+--only-input-typing: applies ONLY the area_of_interest__boundary standard variable
+(+ same_as), the input presentations, their dataset_specification junction links and
+the Hasura has_standard_variable links, to an already-registered catalog. Nothing
+else is written (no units, software tree, I/O specs, parameters, owner, bindings),
+so it is safe on a catalog whose OPERA configurations already exist. Idempotent:
+creates tolerate 409 and the Hasura updates are keyed on ids.
+
 Parameter name matching: the Ensemble Manager builds a model parameter's `name`
 from the catalog parameter LABEL (graphql_adapter.ts modelParameterFromCatalogGQL:
 `name: p.label || p.id`) and TapisJobService matches `parameter.name === <app arg
@@ -56,6 +68,8 @@ Constraints, parameter units, DatasetSpecification dimensionality.
 
 Usage:
     python3 scripts/register_subside_to_mint.py --dry-run
+    python3 scripts/register_subside_to_mint.py --only-input-typing --legacy-api-schema \\
+        --api-base https://mintdevapi.pods.portals.tapis.io/v2.0.0   # add --dry-run first
     MINT_API_TOKEN=... python3 scripts/register_subside_to_mint.py \\
         --api-base https://mintdevapi.pods.portals.tapis.io/v2.0.0 --legacy-api-schema
     # (add --owner-username <tapis user> or MINT_OWNER_USERNAME for real runs)
@@ -89,6 +103,10 @@ YAML_PATH = REPO_ROOT / "subside" / "tapis" / "workflow_apps" / "opera-disp-s1.m
 # exists in the MODFLOW registration; the others are created here if missing.
 UNITS = {"m": "meter", "mm": "millimeter", "mm/yr": "millimeter_per_year"}
 STANDARD_VARIABLES = ["land_surface__displacement", "land_surface__displacement_rate"]
+# Typed-input standard variable (AOI GeoJSON inputs). Not in the SVO bulk set the
+# displacement variables come from, so it carries its own description.
+AOI_STANDARD_VARIABLE = "area_of_interest__boundary"
+AOI_DESCRIPTION = "Polygon a model restricts its work to (area of interest)"
 
 
 # --------------------------------------------------------------------------- #
@@ -170,15 +188,17 @@ def build_presentation(spec: dict[str, Any]) -> dict[str, Any] | None:
     binding = spec.get("variablePresentation")
     if not binding:
         return None
-    return {
+    vp = {
         "id": uri(f"{spec['id']}-vp"),
         "type": ["VariablePresentation"],
         "label": arr(binding["longName"]),
         "has_long_name": arr(binding["longName"]),
         "has_short_name": arr(binding["shortName"]),
         "has_standard_variable": arr(uri(binding["standardVariable"])),
-        "uses_unit": arr(_unit_iri(UNITS[binding["unit"]])),
     }
+    if binding.get("unit"):  # typed inputs (e.g. AOI GeoJSON) have no unit
+        vp["uses_unit"] = arr(_unit_iri(UNITS[binding["unit"]]))
+    return vp
 
 
 def build_spec(spec: dict[str, Any]) -> dict[str, Any]:
@@ -277,6 +297,11 @@ def build_standard_variables() -> list[dict[str, Any]]:
     return [{"id": uri(n), "type": ["StandardVariable"], "label": arr(n)} for n in STANDARD_VARIABLES]
 
 
+def build_aoi_standard_variable() -> dict[str, Any]:
+    return {"id": uri(AOI_STANDARD_VARIABLE), "type": ["StandardVariable"],
+            "label": arr(AOI_STANDARD_VARIABLE), "description": arr(AOI_DESCRIPTION)}
+
+
 # --------------------------------------------------------------------------- #
 # Hasura (patch + reset)
 # --------------------------------------------------------------------------- #
@@ -331,22 +356,33 @@ def build_patch_plan(model: dict[str, Any], owner_username: str | None = None) -
             f"tapis_app_version:{json.dumps(c['tapis_app_version'][0])}, "
             f"has_component_location:{json.dumps(c['has_component_location'][0])}"
             "}){affected_rows} }")))
-    groups: dict[tuple[str, str], list[str]] = {}
+    link = build_presentation_link_mutation(model)
+    if link:
+        plan.append(("presentation SVO/unit links", link))
+    plan.append(("standard variable same_as", R.build_same_as_mutation(
+        [(uri(n), _svo_iri(n)) for n in STANDARD_VARIABLES + [AOI_STANDARD_VARIABLE]])))
+    return plan
+
+
+def build_presentation_link_mutation(model: dict[str, Any], inputs_only: bool = False) -> str | None:
+    """Hasura scalar links (has_standard_variable [+ uses_unit]) for the presentations.
+
+    Unitless presentations (typed inputs) only set has_standard_variable.
+    """
+    groups: dict[tuple[str, str | None], list[str]] = {}
     for cfg in iter_configs(model):
-        for spec in cfg.get("hasOutput", []) + cfg.get("hasInput", []):
+        specs = cfg.get("hasInput", []) if inputs_only else cfg.get("hasOutput", []) + cfg.get("hasInput", [])
+        for spec in specs:
             vp = build_presentation(spec)
             if vp:
-                groups.setdefault((vp["has_standard_variable"][0], vp["uses_unit"][0]), []).append(vp["id"])
-    parts = [
-        f"g{i}: update_modelcatalog_variable_presentation(where:{{id:{{_in:{json.dumps(ids)}}}}}, "
-        f"_set:{{has_standard_variable:{json.dumps(sv)}, uses_unit:{json.dumps(un)}}}){{affected_rows}}"
-        for i, ((sv, un), ids) in enumerate(groups.items())
-    ]
-    if parts:
-        plan.append(("presentation SVO/unit links", "mutation { " + " ".join(parts) + " }"))
-    plan.append(("standard variable same_as", R.build_same_as_mutation(
-        [(uri(n), _svo_iri(n)) for n in STANDARD_VARIABLES])))
-    return plan
+                unit = vp["uses_unit"][0] if "uses_unit" in vp else None
+                groups.setdefault((vp["has_standard_variable"][0], unit), []).append(vp["id"])
+    parts = []
+    for i, ((sv, un), ids) in enumerate(groups.items()):
+        sets = f"has_standard_variable:{json.dumps(sv)}" + (f", uses_unit:{json.dumps(un)}" if un else "")
+        parts.append(f"g{i}: update_modelcatalog_variable_presentation("
+                     f"where:{{id:{{_in:{json.dumps(ids)}}}}}, _set:{{{sets}}}){{affected_rows}}")
+    return "mutation { " + " ".join(parts) + " }" if parts else None
 
 
 def build_reset_mutation(model: dict[str, Any]) -> str:
@@ -380,6 +416,19 @@ def build_reset_mutation(model: dict[str, Any]) -> str:
 # --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
+def register_presentation(api_base: str, token: str, spec: dict[str, Any], dry_run: bool) -> None:
+    """Create a spec's VariablePresentation and link it to the spec (junction PUT)."""
+    vp = build_presentation(spec)
+    if not vp:
+        return
+    # scalar link columns are patched via Hasura afterwards
+    post(api_base, "variablepresentations",
+         {k: v for k, v in vp.items() if k not in ("has_standard_variable", "uses_unit")},
+         token, dry_run)
+    _put(api_base, "datasetspecifications", uri(spec["id"]),
+         {"id": uri(spec["id"]), "hasPresentation": [{"id": vp["id"]}]}, token, dry_run)
+
+
 def register_io(api_base: str, token: str, model: dict[str, Any], dry_run: bool) -> None:
     """Create DatasetSpecifications, link them to each configuration (junction
     PUTs), then create VariablePresentations and link them to their specs."""
@@ -396,15 +445,29 @@ def register_io(api_base: str, token: str, model: dict[str, Any], dry_run: bool)
             _put(api_base, "modelconfigurations", cfg_id, {"id": cfg_id, "hasOutput": [
                 {"id": uri(s["id"])} for s in outputs]}, token, dry_run)
         for spec in inputs + outputs:
-            vp = build_presentation(spec)
-            if not vp:
-                continue
-            # scalar link columns are patched via Hasura afterwards
-            post(api_base, "variablepresentations",
-                 {k: v for k, v in vp.items() if k not in ("has_standard_variable", "uses_unit")},
-                 token, dry_run)
-            _put(api_base, "datasetspecifications", uri(spec["id"]),
-                 {"id": uri(spec["id"]), "hasPresentation": [{"id": vp["id"]}]}, token, dry_run)
+            register_presentation(api_base, token, spec, dry_run)
+
+
+def apply_input_typing(api_base: str, token: str, model: dict[str, Any], dry_run: bool) -> None:
+    """--only-input-typing: the AOI standard variable + input presentations + links only."""
+    print("--- Input typing: standard variable ---")
+    post(api_base, "standardvariables", build_aoi_standard_variable(), token, dry_run)
+    print("\n--- Input typing: input presentations ---")
+    for cfg in iter_configs(model):
+        for spec in cfg.get("hasInput", []):
+            register_presentation(api_base, token, spec, dry_run)
+    print("\n--- Input typing: Hasura links ---")
+    mutations = [("input presentation standard-variable links", build_presentation_link_mutation(model, inputs_only=True)),
+                 ("standard variable same_as", R.build_same_as_mutation([(uri(AOI_STANDARD_VARIABLE), _svo_iri(AOI_STANDARD_VARIABLE))]))]
+    for desc, mutation in mutations:
+        if not mutation:
+            continue
+        if dry_run:
+            print(f"[dry-run] HASURA {desc}\n{mutation}")
+        else:
+            _hasura(mutation)
+            print(f"[patched] {desc}")
+    print("\nDone." + (" (dry-run, no changes made)" if dry_run else ""))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -420,10 +483,13 @@ def main(argv: list[str] | None = None) -> int:
                          "(default $MINT_OWNER_USERNAME; required unless --dry-run).")
     ap.add_argument("--reset", action="store_true",
                     help="Delete the OPERA catalog rows via Hasura before registering.")
+    ap.add_argument("--only-input-typing", action="store_true",
+                    help="Apply only the area_of_interest__boundary standard variable + input presentations "
+                         "+ Hasura links to an already-registered catalog (no full registration).")
     args = ap.parse_args(argv)
     R.LEGACY_API_SCHEMA = args.legacy_api_schema
 
-    if not args.owner_username and not args.dry_run:
+    if not args.owner_username and not args.dry_run and not args.only_input_typing:
         raise SystemExit("--owner-username (or MINT_OWNER_USERNAME) is required for non-dry-run registration.")
     token = os.environ.get("MINT_API_TOKEN") or os.environ.get("TOKEN")
     if not token and not args.dry_run and not args.api_base.startswith(
@@ -433,6 +499,12 @@ def main(argv: list[str] | None = None) -> int:
     token = token or "e2e-test"
 
     model = load_yaml(args.yaml)
+
+    if args.only_input_typing:
+        if args.reset:
+            raise SystemExit("--only-input-typing cannot be combined with --reset.")
+        apply_input_typing(args.api_base, token, model, args.dry_run)
+        return 0
 
     if args.reset:
         mutation = build_reset_mutation(model)
@@ -445,7 +517,7 @@ def main(argv: list[str] | None = None) -> int:
     print("--- Phase 1: units + standard variables ---")
     for payload in build_units():
         post(args.api_base, "units", payload, token, args.dry_run)
-    for payload in build_standard_variables():
+    for payload in build_standard_variables() + [build_aoi_standard_variable()]:
         post(args.api_base, "standardvariables", payload, token, args.dry_run)
 
     print("\n--- Phase 2: Software -> Version -> Configurations (nested) ---")
