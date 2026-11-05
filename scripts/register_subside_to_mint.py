@@ -21,7 +21,9 @@ Phases (same shape as the MODFLOW registration):
   2. Software -> Version -> Configuration(+Parameters) nested top-down so the
      child FKs are set. keywords is one comma-joined scalar string.
   3. DatasetSpecifications (inputs/outputs), then junction PUTs onto each
-     configuration (nested I/O hits the API's junction bug), then
+     configuration (nested I/O hits the API's junction bug; the hasInput
+     junction carries isOptional and appInputName, the Tapis file input the
+     dataset feeds), then
      VariablePresentations linked to their specs.
   4. Hasura patch phase (the REST create path cannot set these):
        - configuration tapis_app_id / tapis_app_version / has_component_location
@@ -63,6 +65,10 @@ configuration's owner, so the Hasura patch phase sets owner_username on every
 configuration to --owner-username (the SUBSIDE admin). Required unless --dry-run;
 default from env MINT_OWNER_USERNAME.
 
+--only-input-typing re-PUTs the hasInput junctions too, so an existing catalog
+gets the appInputName binding without a full re-register. Two inputs of one
+configuration binding the same appInputName are rejected when the YAML loads.
+
 Not registered (not representable via the REST columns used here): Regions,
 Constraints, parameter units, DatasetSpecification dimensionality.
 
@@ -97,7 +103,9 @@ uri, arr, post, _put = R.uri, R.arr, R.post, R._put
 _svo_iri, _unit_iri = R._svo_iri, R._unit_iri
 
 REPO_ROOT = SCRIPTS_DIR.parent.parent  # modflow-suite/
-YAML_PATH = REPO_ROOT / "subside" / "tapis" / "workflow_apps" / "opera-disp-s1.model-catalog.yaml"
+# SUBSIDE_CATALOG_YAML overrides the default (e.g. to point at a subside worktree).
+YAML_PATH = Path(os.environ.get("SUBSIDE_CATALOG_YAML") or
+                 REPO_ROOT / "subside" / "tapis" / "workflow_apps" / "opera-disp-s1.model-catalog.yaml")
 
 # Unit label (as written in the YAML) -> catalog unit slug. `meter` already
 # exists in the MODFLOW registration; the others are created here if missing.
@@ -112,9 +120,25 @@ AOI_DESCRIPTION = "Polygon a model restricts its work to (area of interest)"
 # --------------------------------------------------------------------------- #
 # YAML -> payloads
 # --------------------------------------------------------------------------- #
+def validate_app_input_names(model: dict[str, Any]) -> None:
+    """Reject two inputs of one configuration bound to the same Tapis file input."""
+    for cfg in iter_configs(model):
+        seen: dict[str, str] = {}
+        for spec in cfg.get("hasInput", []):
+            name = spec.get("appInputName")
+            if not name:
+                continue
+            if name in seen:
+                raise SystemExit(f"Configuration {cfg['id']}: inputs {seen[name]} and {spec['id']} "
+                                 f"both bind appInputName '{name}'.")
+            seen[name] = spec["id"]
+
+
 def load_yaml(path: Path = YAML_PATH) -> dict[str, Any]:
     with path.open() as f:
-        return yaml.safe_load(f)["model"]
+        model = yaml.safe_load(f)["model"]
+    validate_app_input_names(model)
+    return model
 
 
 def _first(node: dict[str, Any], key: str, default: Any = None) -> Any:
@@ -429,6 +453,22 @@ def register_presentation(api_base: str, token: str, spec: dict[str, Any], dry_r
          {"id": uri(spec["id"]), "hasPresentation": [{"id": vp["id"]}]}, token, dry_run)
 
 
+def build_input_junctions(inputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """sd:hasInput junction rows; appInputName is omitted when the YAML has none."""
+    rows = []
+    for s in inputs:
+        row = {"id": uri(s["id"]), "isOptional": bool(s.get("isOptional", False))}
+        if s.get("appInputName"):
+            row["appInputName"] = s["appInputName"]
+        rows.append(row)
+    return rows
+
+
+def link_inputs(api_base: str, token: str, cfg_id: str, inputs: list[dict[str, Any]], dry_run: bool) -> None:
+    _put(api_base, "modelconfigurations", cfg_id,
+         {"id": cfg_id, "hasInput": build_input_junctions(inputs)}, token, dry_run)
+
+
 def register_io(api_base: str, token: str, model: dict[str, Any], dry_run: bool) -> None:
     """Create DatasetSpecifications, link them to each configuration (junction
     PUTs), then create VariablePresentations and link them to their specs."""
@@ -438,9 +478,7 @@ def register_io(api_base: str, token: str, model: dict[str, Any], dry_run: bool)
         for spec in inputs + outputs:
             post(api_base, "datasetspecifications", build_spec(spec), token, dry_run)
         if inputs:
-            _put(api_base, "modelconfigurations", cfg_id, {"id": cfg_id, "hasInput": [
-                {"id": uri(s["id"]), "isOptional": bool(s.get("isOptional", False))} for s in inputs]},
-                token, dry_run)
+            link_inputs(api_base, token, cfg_id, inputs, dry_run)
         if outputs:
             _put(api_base, "modelconfigurations", cfg_id, {"id": cfg_id, "hasOutput": [
                 {"id": uri(s["id"])} for s in outputs]}, token, dry_run)
@@ -449,9 +487,14 @@ def register_io(api_base: str, token: str, model: dict[str, Any], dry_run: bool)
 
 
 def apply_input_typing(api_base: str, token: str, model: dict[str, Any], dry_run: bool) -> None:
-    """--only-input-typing: the AOI standard variable + input presentations + links only."""
+    """--only-input-typing: the AOI standard variable, input junctions (app input
+    binding), input presentations and links only."""
     print("--- Input typing: standard variable ---")
     post(api_base, "standardvariables", build_aoi_standard_variable(), token, dry_run)
+    print("\n--- Input typing: input junctions (app input binding) ---")
+    for cfg in iter_configs(model):
+        if cfg.get("hasInput"):
+            link_inputs(api_base, token, uri(cfg["id"]), cfg["hasInput"], dry_run)
     print("\n--- Input typing: input presentations ---")
     for cfg in iter_configs(model):
         for spec in cfg.get("hasInput", []):
