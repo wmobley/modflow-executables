@@ -240,3 +240,53 @@ def test_owner_required_when_not_dry_run(monkeypatch) -> None:
 
 def test_pg_text_array_escapes_quotes_and_backslashes() -> None:
     assert reg.R.pg_text_array(["a", 'b"c', "d\\e"]) == '{"a","b\\"c","d\\\\e"}'
+
+
+AOI_INPUT_IDS = {"h2i-input-aoi", "werc-input-aoi"}
+
+
+def test_aoi_inputs_typed_as_boundary_with_no_unit() -> None:
+    model = reg.load_yaml()
+    typed = {}
+    for cfg in reg.iter_configs(model):
+        for spec in cfg["hasInput"]:
+            vp = reg.build_presentation(spec)
+            if vp:
+                typed[spec["id"]] = vp
+    assert set(typed) == AOI_INPUT_IDS
+    for spec_id, vp in typed.items():
+        assert vp["id"] == R.uri(f"{spec_id}-vp")
+        assert vp["has_standard_variable"] == [R.uri("area_of_interest__boundary")]
+        assert "uses_unit" not in vp
+
+
+def test_aoi_standard_variable_payload() -> None:
+    sv = reg.build_aoi_standard_variable()
+    assert sv["id"] == "https://w3id.org/okn/i/mint/area_of_interest__boundary"
+    assert sv["type"] == ["StandardVariable"]
+    assert sv["description"] == ["Polygon a model restricts its work to (area of interest)"]
+
+
+def test_input_link_mutation_tolerates_missing_unit() -> None:
+    model = reg.load_yaml()
+    mutation = reg.build_presentation_link_mutation(model, inputs_only=True)
+    assert "area_of_interest__boundary" in mutation
+    assert "uses_unit" not in mutation
+    full = "\n".join(m for _, m in reg.build_patch_plan(model))
+    assert "area_of_interest__boundary" in full and "uses_unit" in full
+
+
+def test_only_input_typing_dry_run_writes_only_the_typing() -> None:
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert reg.main(["--dry-run", "--legacy-api-schema", "--only-input-typing"]) == 0
+    R.LEGACY_API_SCHEMA = False
+    text = out.getvalue()
+    assert "/standardvariables" in text
+    assert text.count("/variablepresentations") == 2
+    assert text.count("PUT") == 2 and text.count("/datasetspecifications/") == 2
+    assert "HASURA input presentation standard-variable links" in text
+    assert "HASURA standard variable same_as" in text
+    for absent in ("/units", "/models", "/datasetspecifications  (", "/modelconfigurations",
+                   "owner_username", "tapis_app_id", "uses_unit"):
+        assert absent not in text
