@@ -69,6 +69,13 @@ default from env MINT_OWNER_USERNAME.
 gets the appInputName binding without a full re-register. Two inputs of one
 configuration binding the same appInputName are rejected when the YAML loads.
 
+Output binding: an output's YAML `archivedFile` (file name or glob in the job archive
+root, or `{param:<parameter id>}` resolved at submit) rides on the hasOutput junction.
+It is validated when the YAML loads (character whitelist, no '/', no tapisjob*, the
+referenced parameter must be declared, no two outputs of a configuration share a
+file). --only-output-binding re-PUTs ONLY the output junctions for every configuration
+on an existing catalog (dry-run aware).
+
 Not registered (not representable via the REST columns used here): Regions,
 Constraints, parameter units, DatasetSpecification dimensionality.
 
@@ -78,6 +85,8 @@ Usage:
         --api-base https://mintdevapi.pods.portals.tapis.io/v2.0.0   # add --dry-run first
     MINT_API_TOKEN=... python3 scripts/register_subside_to_mint.py \\
         --api-base https://mintdevapi.pods.portals.tapis.io/v2.0.0 --legacy-api-schema
+    python3 scripts/register_subside_to_mint.py --only-output-binding --legacy-api-schema \\
+        --api-base https://mintdevapi.pods.portals.tapis.io/v2.0.0   # add --dry-run first
     # (add --owner-username <tapis user> or MINT_OWNER_USERNAME for real runs)
     # --reset deletes the OPERA rows (by the YAML's exact ids) via Hasura first
     # (HASURA_GRAPHQL_URL + HASURA_ADMIN_SECRET).
@@ -134,10 +143,25 @@ def validate_app_input_names(model: dict[str, Any]) -> None:
             seen[name] = spec["id"]
 
 
+def validate_archived_files(model: dict[str, Any]) -> None:
+    """Check each output's archivedFile (value rules, {param:} references, duplicates)."""
+    for cfg in iter_configs(model):
+        param_ids = {p["id"] for p in cfg.get("hasParameter", [])} | {uri(p["id"]) for p in cfg.get("hasParameter", [])}
+        for spec in cfg.get("hasOutput", []):
+            if "archivedFile" not in spec:
+                continue
+            problem = R.validate_archived_file(spec["archivedFile"], param_ids)
+            if problem:
+                raise SystemExit(f"Configuration {cfg['id']}: output {spec['id']} archivedFile "
+                                 f"{spec['archivedFile']!r} {problem}.")
+        R.check_unique_archived_files(f"Configuration {cfg['id']}", cfg.get("hasOutput", []))
+
+
 def load_yaml(path: Path = YAML_PATH) -> dict[str, Any]:
     with path.open() as f:
         model = yaml.safe_load(f)["model"]
     validate_app_input_names(model)
+    validate_archived_files(model)
     return model
 
 
@@ -469,6 +493,22 @@ def link_inputs(api_base: str, token: str, cfg_id: str, inputs: list[dict[str, A
          {"id": cfg_id, "hasInput": build_input_junctions(inputs)}, token, dry_run)
 
 
+def build_output_junctions(outputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """sd:hasOutput junction rows; archivedFile is omitted when the YAML has none."""
+    rows = []
+    for s in outputs:
+        row = {"id": uri(s["id"])}
+        if s.get("archivedFile"):
+            row["archivedFile"] = s["archivedFile"]
+        rows.append(row)
+    return rows
+
+
+def link_outputs(api_base: str, token: str, cfg_id: str, outputs: list[dict[str, Any]], dry_run: bool) -> None:
+    _put(api_base, "modelconfigurations", cfg_id,
+         {"id": cfg_id, "hasOutput": build_output_junctions(outputs)}, token, dry_run)
+
+
 def register_io(api_base: str, token: str, model: dict[str, Any], dry_run: bool) -> None:
     """Create DatasetSpecifications, link them to each configuration (junction
     PUTs), then create VariablePresentations and link them to their specs."""
@@ -480,8 +520,7 @@ def register_io(api_base: str, token: str, model: dict[str, Any], dry_run: bool)
         if inputs:
             link_inputs(api_base, token, cfg_id, inputs, dry_run)
         if outputs:
-            _put(api_base, "modelconfigurations", cfg_id, {"id": cfg_id, "hasOutput": [
-                {"id": uri(s["id"])} for s in outputs]}, token, dry_run)
+            link_outputs(api_base, token, cfg_id, outputs, dry_run)
         for spec in inputs + outputs:
             register_presentation(api_base, token, spec, dry_run)
 
@@ -513,6 +552,15 @@ def apply_input_typing(api_base: str, token: str, model: dict[str, Any], dry_run
     print("\nDone." + (" (dry-run, no changes made)" if dry_run else ""))
 
 
+def apply_output_binding(api_base: str, token: str, model: dict[str, Any], dry_run: bool) -> None:
+    """--only-output-binding: re-PUT only the hasOutput junctions (archivedFile)."""
+    print("--- Output binding: output junctions (archivedFile) ---")
+    for cfg in iter_configs(model):
+        if cfg.get("hasOutput"):
+            link_outputs(api_base, token, uri(cfg["id"]), cfg["hasOutput"], dry_run)
+    print("\nDone." + (" (dry-run, no changes made)" if dry_run else ""))
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Register the SUBSIDE OPERA models into the MINT v2 catalog.")
     ap.add_argument("--api-base", default=R.DEFAULT_API_BASE, help="model-catalog-api /v2.0.0 base URL.")
@@ -529,10 +577,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--only-input-typing", action="store_true",
                     help="Apply only the area_of_interest__boundary standard variable + input presentations "
                          "+ Hasura links to an already-registered catalog (no full registration).")
+    ap.add_argument("--only-output-binding", action="store_true",
+                    help="Re-PUT only the hasOutput junctions (archivedFile binding) of an "
+                         "already-registered catalog.")
     args = ap.parse_args(argv)
     R.LEGACY_API_SCHEMA = args.legacy_api_schema
 
-    if not args.owner_username and not args.dry_run and not args.only_input_typing:
+    if not args.owner_username and not args.dry_run and not args.only_input_typing \
+            and not args.only_output_binding:
         raise SystemExit("--owner-username (or MINT_OWNER_USERNAME) is required for non-dry-run registration.")
     token = os.environ.get("MINT_API_TOKEN") or os.environ.get("TOKEN")
     if not token and not args.dry_run and not args.api_base.startswith(
@@ -542,6 +594,12 @@ def main(argv: list[str] | None = None) -> int:
     token = token or "e2e-test"
 
     model = load_yaml(args.yaml)
+
+    if args.only_output_binding:
+        if args.reset or args.only_input_typing:
+            raise SystemExit("--only-output-binding cannot be combined with --reset or --only-input-typing.")
+        apply_output_binding(args.api_base, token, model, args.dry_run)
+        return 0
 
     if args.only_input_typing:
         if args.reset:
