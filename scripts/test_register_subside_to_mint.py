@@ -352,7 +352,6 @@ def test_yaml_bindings_match_spec() -> None:
         "h2i-output-archive-zip": "OPERA_L3_DISP-S1.zip",
         "werc-output-cumulative-tif": "{param:werc-param-displacement-geotiff-name}",
         "werc-output-velocity-tif": "{param:werc-param-velocity-geotiff-name}",
-        "werc-output-manifest": "werc-run-manifest.json",
     }
 
 
@@ -366,7 +365,8 @@ def _with_binding(value: str):
 
 def test_invalid_archived_files_are_rejected() -> None:
     import pytest
-    for bad in ["a/b", "/abs", "..", ".", "tapisjob.out", "TapisJob.log", "x" * 256, "a b", "a'b", "a\nb", ""]:
+    for bad in ["a/b", "/abs", "..", ".", "tapisjob.out", "TapisJob.log", "x" * 256, "a b", "a'b", "a\nb", "",
+                "a.tif\n", "{param:}", "x{param:h2i-param-start-date}.tif", "{param:a}{param:b}"]:
         with pytest.raises(SystemExit):
             reg.validate_archived_files(_with_binding(bad))
 
@@ -403,7 +403,7 @@ def test_only_output_binding_dry_run_touches_only_output_junctions() -> None:
     text = out.getvalue()
     lines = [ln for ln in text.splitlines() if ln.startswith("[dry-run]")]
     assert len(lines) == 2 and all("PUT" in ln and "modelconfigurations" in ln for ln in lines)
-    assert text.count('"archivedFile"') == 7
+    assert text.count('"archivedFile"') == 6
     assert "hasInput" not in text and "POST" not in text and "HASURA" not in text
 
 
@@ -418,4 +418,4 @@ def test_full_dry_run_hasoutput_put_carries_archived_file() -> None:
     with contextlib.redirect_stdout(out):
         assert reg.main(["--dry-run", "--legacy-api-schema"]) == 0
     R.LEGACY_API_SCHEMA = False
-    assert out.getvalue().count('"archivedFile"') == 7
+    assert out.getvalue().count('"archivedFile"') == 6

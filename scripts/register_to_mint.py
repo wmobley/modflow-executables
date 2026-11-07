@@ -363,13 +363,18 @@ def validate_archived_file(value: str, param_ids: set[str] | None = None) -> str
     `{param:<id>}` reference must name a declared parameter id (full URI or last
     segment). `param_ids=None` skips the reference lookup.
     """
-    if not isinstance(value, str) or not ARCHIVED_FILE_RE.match(value):
+    if not isinstance(value, str) or not ARCHIVED_FILE_RE.fullmatch(value):
         return "must be 1-255 chars of A-Za-z0-9._-*?[]{}:"
     if "/" in value or value in (".", ".."):
         return "must be a base name (no '/', not '.' or '..')"
     if value.lower().startswith("tapisjob"):
         return "must not be a tapisjob* service file"
-    for ref in re.findall(r"\{param:([^}]*)\}", value):
+    if "{param:" in value:
+        # A reference is the whole value or nothing: the EM substitutes only that form.
+        whole = re.fullmatch(r"\{param:([^{}]+)\}", value)
+        if not whole:
+            return "a {param:<id>} reference must be the whole value and name a parameter"
+        ref = whole.group(1)
         if param_ids is not None and ref not in param_ids and ref.rsplit("/", 1)[-1] not in param_ids:
             return f"references unknown parameter '{ref}'"
     return None
