@@ -328,3 +328,94 @@ def test_duplicate_app_input_name_in_one_configuration_is_rejected() -> None:
 
 def test_same_app_input_name_in_different_configurations_is_allowed() -> None:
     reg.validate_app_input_names(reg.load_yaml())  # both configs bind aoi-geojson
+
+
+# --- output file binding (hasOutput.archivedFile) --------------------------- #
+def _outputs_by_id() -> dict:
+    return {s["id"]: s for c in reg.iter_configs(reg.load_yaml()) for s in c["hasOutput"]}
+
+
+def test_output_junction_carries_archived_file_and_omits_when_unset() -> None:
+    outs = _outputs_by_id()
+    rows = reg.build_output_junctions([outs["h2i-output-displacement-cog"], outs["h2i-output-netcdfs"]])
+    assert rows == [{"id": reg.uri("h2i-output-displacement-cog"), "archivedFile": "disp_displacement.tif"},
+                    {"id": reg.uri("h2i-output-netcdfs")}]
+
+
+def test_yaml_bindings_match_spec() -> None:
+    outs = _outputs_by_id()
+    bound = {k: v["archivedFile"] for k, v in outs.items() if "archivedFile" in v}
+    assert bound == {
+        "h2i-output-displacement-cog": "disp_displacement.tif",
+        "h2i-output-manifest": "run-manifest.json",
+        "h2i-output-overlay-png": "disp_overlay.png",
+        "h2i-output-archive-zip": "OPERA_L3_DISP-S1.zip",
+        "werc-output-cumulative-tif": "{param:werc-param-displacement-geotiff-name}",
+        "werc-output-velocity-tif": "{param:werc-param-velocity-geotiff-name}",
+    }
+
+
+def _with_binding(value: str):
+    import copy
+    model = copy.deepcopy(reg.load_yaml())
+    cfg = next(reg.iter_configs(model))
+    cfg["hasOutput"][0]["archivedFile"] = value
+    return model
+
+
+def test_invalid_archived_files_are_rejected() -> None:
+    import pytest
+    for bad in ["a/b", "/abs", "..", ".", "tapisjob.out", "TapisJob.log", "x" * 256, "a b", "a'b", "a\nb", "",
+                "a.tif\n", "{param:}", "x{param:h2i-param-start-date}.tif", "{param:a}{param:b}"]:
+        with pytest.raises(SystemExit):
+            reg.validate_archived_files(_with_binding(bad))
+
+
+def test_valid_archived_files_are_accepted() -> None:
+    for ok in ["out.tif", "*.cb[bc]", "a?.tif", "x" * 255]:
+        reg.validate_archived_files(_with_binding(ok))
+
+
+def test_param_reference_resolves_against_has_parameter() -> None:
+    import pytest
+    reg.validate_archived_files(_with_binding("{param:h2i-param-start-date}"))
+    with pytest.raises(SystemExit, match="unknown parameter"):
+        reg.validate_archived_files(_with_binding("{param:nope}"))
+    with pytest.raises(SystemExit, match="unknown parameter"):  # a WERC id is not in the H2I configuration
+        reg.validate_archived_files(_with_binding("{param:werc-param-start-date}"))
+
+
+def test_duplicate_archived_file_in_one_configuration_is_rejected() -> None:
+    import copy
+    import pytest
+    model = copy.deepcopy(reg.load_yaml())
+    cfg = next(reg.iter_configs(model))
+    cfg["hasOutput"][1]["archivedFile"] = cfg["hasOutput"][0]["archivedFile"]
+    with pytest.raises(SystemExit, match="both bind archivedFile"):
+        reg.validate_archived_files(model)
+
+
+def test_only_output_binding_dry_run_touches_only_output_junctions() -> None:
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert reg.main(["--dry-run", "--legacy-api-schema", "--only-output-binding"]) == 0
+    R.LEGACY_API_SCHEMA = False
+    text = out.getvalue()
+    lines = [ln for ln in text.splitlines() if ln.startswith("[dry-run]")]
+    assert len(lines) == 2 and all("PUT" in ln and "modelconfigurations" in ln for ln in lines)
+    assert text.count('"archivedFile"') == 6
+    assert "hasInput" not in text and "POST" not in text and "HASURA" not in text
+
+
+def test_only_output_binding_rejects_reset() -> None:
+    import pytest
+    with pytest.raises(SystemExit):
+        reg.main(["--dry-run", "--only-output-binding", "--reset"])
+
+
+def test_full_dry_run_hasoutput_put_carries_archived_file() -> None:
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        assert reg.main(["--dry-run", "--legacy-api-schema"]) == 0
+    R.LEGACY_API_SCHEMA = False
+    assert out.getvalue().count('"archivedFile"') == 6

@@ -330,6 +330,44 @@ class RegistrationPayloadTests(unittest.TestCase):
         posted_specs = [a[3] for k, a in calls if k == "post" and a[1] == "datasetspecifications"]
         self.assertTrue(all("appInputName" not in spec for spec in posted_specs))
 
+    def test_outputs_carry_archived_file_globs(self) -> None:
+        for variant in VARIANTS:
+            _, meta = self.app_and_meta(variant)
+            for spec, o in zip(registration.build_outputs(meta), meta["outputs"]):
+                if o["ext"] == "dat":
+                    self.assertNotIn("archivedFile", spec, variant)
+                    continue
+                want = "*.cb[bc]" if o["ext"].startswith("cbc") else f"*.{o['ext']}"
+                self.assertEqual(spec["archivedFile"], want, variant)
+                self.assertIsNone(registration.validate_archived_file(spec["archivedFile"]))
+
+    def test_duplicate_archived_file_is_rejected(self) -> None:
+        specs = [{"id": "a", "archivedFile": "*.hds"}, {"id": "b", "archivedFile": "*.hds"}]
+        with self.assertRaises(SystemExit):
+            registration.check_unique_archived_files("Variant x", specs)
+
+    def test_outputs_sharing_an_extension_stay_unbound(self) -> None:
+        _, meta = self.app_and_meta("modflow-96")
+        specs = {s["label"][0]: s for s in registration.build_outputs(meta)}
+        self.assertEqual([s for s in specs.values() if "archivedFile" not in s and s["has_format"] == ["dat"]].__len__(), 3)
+
+    def test_hasoutput_junction_put_carries_archived_file(self) -> None:
+        calls = []
+        original_post, original_put = registration.post, registration._put
+        registration.post = lambda *args: calls.append(("post", args))
+        registration._put = lambda *args: calls.append(("put", args))
+        try:
+            registration.register_inputs_outputs("https://catalog.example/v2.0.0", "token", ["modflow6"], False)
+        finally:
+            registration.post, registration._put = original_post, original_put
+        junctions = [a[3]["hasOutput"] for k, a in calls if k == "put" and "hasOutput" in a[3]]
+        self.assertTrue(junctions)
+        for rows in junctions:
+            self.assertTrue(all(r.get("archivedFile") for r in rows))
+            self.assertIn("*.cb[bc]", {r["archivedFile"] for r in rows})
+        posted_specs = [a[3] for k, a in calls if k == "post" and a[1] == "datasetspecifications"]
+        self.assertTrue(all("archivedFile" not in spec for spec in posted_specs))
+
     def test_dry_run_hasinput_payload_has_app_input_name(self) -> None:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):

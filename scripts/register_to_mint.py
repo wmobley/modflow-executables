@@ -350,9 +350,54 @@ def build_inputs(variant: str, app: dict[str, Any], meta_variant: dict[str, Any]
     return out
 
 
+ARCHIVED_FILE_RE = re.compile(r"^[A-Za-z0-9._\-*?\[\]{}:]{1,255}$")
+# Archive extensions that need a wider glob than `*.<ext>` (the cbc archives carry `.cbb`).
+ARCHIVED_FILE_GLOBS = {"cbc": "*.cb[bc]", "cbc-mf2005": "*.cb[bc]"}
+
+
+def validate_archived_file(value: str, param_ids: set[str] | None = None) -> str | None:
+    """Return why an hasOutput archivedFile is invalid, or None.
+
+    Rules mirror the design spec: base name in the archive root, whitelisted
+    characters, no `/`, not `.`/`..`, not a tapisjob* service file, and a
+    `{param:<id>}` reference must name a declared parameter id (full URI or last
+    segment). `param_ids=None` skips the reference lookup.
+    """
+    if not isinstance(value, str) or not ARCHIVED_FILE_RE.fullmatch(value):
+        return "must be 1-255 chars of A-Za-z0-9._-*?[]{}:"
+    if "/" in value or value in (".", ".."):
+        return "must be a base name (no '/', not '.' or '..')"
+    if value.lower().startswith("tapisjob"):
+        return "must not be a tapisjob* service file"
+    if "{param:" in value:
+        # A reference is the whole value or nothing: the EM substitutes only that form.
+        whole = re.fullmatch(r"\{param:([^{}]+)\}", value)
+        if not whole:
+            return "a {param:<id>} reference must be the whole value and name a parameter"
+        ref = whole.group(1)
+        if param_ids is not None and ref not in param_ids and ref.rsplit("/", 1)[-1] not in param_ids:
+            return f"references unknown parameter '{ref}'"
+    return None
+
+
+def check_unique_archived_files(owner: str, outputs: list[dict[str, Any]]) -> None:
+    """Reject two outputs bound to the same archivedFile."""
+    seen: dict[str, str] = {}
+    for spec in outputs:
+        name = spec.get("archivedFile")
+        if not name:
+            continue
+        if name in seen:
+            raise SystemExit(f"{owner}: outputs {seen[name]} and {spec['id']} both bind archivedFile '{name}'.")
+        seen[name] = spec["id"]
+
+
 def build_outputs(meta_variant: dict[str, Any]) -> list[dict[str, Any]]:
     vslug = meta_variant["version_slug"]
     out = []
+    ext_counts: dict[str, int] = {}
+    for o in meta_variant.get("outputs", []):
+        ext_counts[o["ext"]] = ext_counts.get(o["ext"], 0) + 1
     for i, o in enumerate(meta_variant.get("outputs", []), start=1):
         spec = {
             "id": meta_variant.get("catalog_output_ids", {}).get(o["code"])
@@ -361,11 +406,18 @@ def build_outputs(meta_variant: dict[str, Any]) -> list[dict[str, Any]]:
             "label": arr(o["label"]),
             "has_format": arr(o["ext"]),
             "position": arr(str(i)),
+            # Junction attribute (sd:hasOutput), not a DatasetSpecification column.
+            "archivedFile": ARCHIVED_FILE_GLOBS.get(o["ext"], f"*.{o['ext']}"),
         }
+        if ext_counts[o["ext"]] > 1:
+            # Outputs sharing one extension (MODFLOW-96 writes heads/budget/ddown as .dat)
+            # cannot be told apart by a glob; leave them unbound (name matching applies).
+            del spec["archivedFile"]
         pres = build_presentation(o["code"], vslug, f"out_{o['code']}")
         if pres:
             spec["hasPresentation"] = [pres]
         out.append(spec)
+    check_unique_archived_files(f"Variant {vslug}", out)
     return out
 
 
@@ -817,7 +869,7 @@ def register_inputs_outputs(api_base: str, token: str, variants: list[str], dry_
         all_specs = inputs + outputs
         for spec in all_specs:
             # Strip hasPresentation — we create VPs separately and link via junction
-            spec_clean = {k: v for k, v in spec.items() if k not in ("hasPresentation", "appInputName")}
+            spec_clean = {k: v for k, v in spec.items() if k not in ("hasPresentation", "appInputName", "archivedFile")}
             post(api_base, "datasetspecifications", spec_clean, token, dry_run)
         target_ids = (uri(f"{mv['version_slug']}_cfg"),) if variant in NEW_CONFIG_VARIANTS else LIVE_CONFIG_IDS[variant]
         for config_id in target_ids:
@@ -830,7 +882,8 @@ def register_inputs_outputs(api_base: str, token: str, variants: list[str], dry_
             if outputs:
                 _put(api_base, "modelconfigurations", config_id, {
                     "id": config_id,
-                    "hasOutput": [{"id": s["id"]} for s in outputs],
+                    "hasOutput": [{"id": s["id"], **({"archivedFile": s["archivedFile"]} if s.get("archivedFile") else {})}
+                                  for s in outputs],
                 }, token, dry_run)
 
 
